@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-read-markdown-file"
+description = "Enables the read_markdown_file command."
+commands.allow = ["read_markdown_file"]
+
+[[permission]]
+identifier = "allow-write-markdown-file"
+description = "Enables the write_markdown_file command."
+commands.allow = ["write_markdown_file"]
