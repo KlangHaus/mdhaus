@@ -10,7 +10,7 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] GFM task lists in preview
 - [x] GFM tables in preview
 - [x] Scroll-sync between editor and preview
-- [ ] Click heading in preview to jump to editor line
+- [x] Click heading in preview to jump to editor line
 - [ ] Distraction-free fullscreen writing mode
 - [ ] Image drag-and-drop into markdown
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { GTButton } from "@grundtone/vue";
@@ -17,6 +17,7 @@ import SplitPane from "./SplitPane.vue";
 import { useKeyboardShortcuts } from "../composables/useKeyboardShortcuts";
 import { useWorkspace } from "../composables/useWorkspace";
 import { formatDocumentStats, getDocumentStats } from "../lib/documentStats";
+import { findHeadingLineNumber } from "../lib/headings";
 import { loadPaneLayout, savePaneLayout, type PaneLayout } from "../types/layout";
 import { useI18n } from "../i18n/useI18n";
 
@@ -74,6 +75,19 @@ function onPreviewScroll(ratio: number) {
   }
 
   editorRef.value?.setScrollRatio(ratio);
+}
+
+function onPreviewHeadingClick(id: string) {
+  if (paneLayout.value === "preview") {
+    paneLayout.value = "split";
+  }
+
+  nextTick(() => {
+    const line = findHeadingLineNumber(content.value, id);
+    if (line !== null) {
+      editorRef.value?.scrollToLine(line);
+    }
+  });
 }
 
 const documentStatsLabel = computed(() =>
@@ -169,7 +183,12 @@ function openShortcutsFromInstructions() {
               />
             </template>
             <template #right>
-              <MarkdownPreview ref="previewRef" :source="content" @scroll="onPreviewScroll" />
+              <MarkdownPreview
+                ref="previewRef"
+                :source="content"
+                @scroll="onPreviewScroll"
+                @heading-click="onPreviewHeadingClick"
+              />
             </template>
           </SplitPane>
           <div v-if="syntaxOpen" class="workspace__syntax-overlay">

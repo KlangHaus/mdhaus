@@ -40,3 +40,29 @@ export function extractHeadings(source: string): MarkdownHeading[] {
 
   return headings;
 }
+
+/** Find the 1-based source line for a heading id produced by `extractHeadings`. */
+export function findHeadingLineNumber(source: string, headingId: string): number | null {
+  const slugCounts = new Map<string, number>();
+  const lines = source.split("\n");
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const match = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
+    if (!match) {
+      continue;
+    }
+
+    const text = match[2].replace(/\s+#+\s*$/, "").trim();
+    const base = slugifyHeading(text);
+    const count = slugCounts.get(base) ?? 0;
+    slugCounts.set(base, count + 1);
+    const id = count === 0 ? base : `${base}-${count}`;
+
+    if (id === headingId) {
+      return index + 1;
+    }
+  }
+
+  return null;
+}

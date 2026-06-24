@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   scroll: [ratio: number];
+  "heading-click": [id: string];
 }>();
 
 const { t } = useI18n();
@@ -72,6 +73,20 @@ function scrollToHeading(id: string) {
     articleRef.value?.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
+
+function onHeadingActivate(id: string) {
+  scrollToHeading(id);
+  emit("heading-click", id);
+}
+
+function onArticleClick(event: MouseEvent) {
+  const heading = (event.target as HTMLElement).closest("h1, h2, h3, h4, h5, h6");
+  if (!heading?.id || !articleRef.value?.contains(heading)) {
+    return;
+  }
+
+  onHeadingActivate(heading.id);
+}
 </script>
 
 <template>
@@ -88,7 +103,7 @@ function scrollToHeading(id: string) {
             class="markdown-preview__toc-item"
             :style="{ paddingLeft: `${(heading.level - 1) * 0.65}rem` }"
           >
-            <button type="button" class="markdown-preview__toc-link" @click="scrollToHeading(heading.id)">
+            <button type="button" class="markdown-preview__toc-link" @click="onHeadingActivate(heading.id)">
               {{ heading.text }}
             </button>
           </li>
@@ -99,6 +114,7 @@ function scrollToHeading(id: string) {
         ref="articleRef"
         class="container-prose prose markdown-content markdown-preview__article"
         v-html="html"
+        @click="onArticleClick"
       />
     </div>
   </section>
@@ -164,6 +180,15 @@ function scrollToHeading(id: string) {
 
 .markdown-preview__article {
   min-width: 0;
+
+  :deep(h1),
+  :deep(h2),
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    cursor: pointer;
+  }
 }
 
 .placeholder {

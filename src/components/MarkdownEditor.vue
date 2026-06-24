@@ -42,6 +42,22 @@ function onScrollerScroll() {
 
 defineExpose({
   setScrollRatio: applyScrollRatio,
+  scrollToLine(lineNumber: number) {
+    if (!view) {
+      return;
+    }
+
+    const doc = view.state.doc;
+    const clamped = Math.min(Math.max(1, lineNumber), doc.lines);
+    const line = doc.line(clamped);
+
+    ignoreNextScroll = true;
+    view.dispatch({
+      effects: EditorView.scrollIntoView(line.from, { y: "start", yMargin: 24 }),
+      selection: { anchor: line.from },
+    });
+    view.focus();
+  },
 });
 
 onMounted(() => {
