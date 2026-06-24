@@ -39,6 +39,7 @@ export interface MessageSchema {
     save: string;
     saveAs: string;
     print: string;
+    exportHtml: string;
     syntax: string;
     syntaxHide: string;
     layout: string;
@@ -174,6 +175,10 @@ export interface MessageSchema {
     printEmpty: string;
     printed: string;
     printFailed: string;
+    exportingHtml: string;
+    exportHtmlEmpty: string;
+    exportedHtml: string;
+    exportHtmlFailed: string;
     noFilesInWorkspace: string;
     reloadedFromDisk: string;
     keptUnsaved: string;

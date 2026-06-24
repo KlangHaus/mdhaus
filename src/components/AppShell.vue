@@ -44,6 +44,7 @@ const {
   openFolder,
   openNextFile,
   openPreviousFile,
+  exportCurrentDocumentToHtml,
   printCurrentDocument,
   reloadExternalChanges,
   renameFile,
@@ -190,6 +191,7 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="primary" @click="saveFile(false)">{{ t("toolbar.save") }}</GTButton>
       <GTButton size="sm" variant="outlined" @click="saveFile(true)">{{ t("toolbar.saveAs") }}</GTButton>
       <GTButton size="sm" variant="outlined" @click="printCurrentDocument">{{ t("toolbar.print") }}</GTButton>
+      <GTButton size="sm" variant="outlined" @click="exportCurrentDocumentToHtml">{{ t("toolbar.exportHtml") }}</GTButton>
       <LayoutSwitcher v-model:layout="paneLayout" />
       <GTButton size="sm" variant="outlined" @click="frontMatterOpen = !frontMatterOpen">
         {{ frontMatterOpen ? t("toolbar.metadataHide") : t("toolbar.metadata") }}

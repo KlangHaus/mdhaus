@@ -10,6 +10,11 @@ import type {
   WorkspaceTreeChanged,
 } from "../types/workspace";
 import { flattenMarkdownFiles, nextUntitledPath } from "../lib/fileTree";
+import {
+  buildHtmlDocument,
+  defaultHtmlExportPath,
+  ExportHtmlDocumentError,
+} from "../lib/exportHtmlDocument";
 import { PrintDocumentError, printMarkdownDocument } from "../lib/printDocument";
 import { APP_NAME } from "../lib/brand";
 
@@ -480,6 +485,48 @@ export function useWorkspace() {
     }
   }
 
+  async function exportCurrentDocumentToHtml() {
+    if (content.value.trim().length === 0) {
+      status.value = t("status.exportHtmlEmpty");
+      return;
+    }
+
+    const selected = await save({
+      filters: [
+        { name: "HTML", extensions: ["html", "htm"] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+      defaultPath: defaultHtmlExportPath(filePath.value),
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    status.value = t("status.exportingHtml");
+
+    try {
+      const docTitle = filePath.value ? basename(filePath.value) : t("files.untitledShort");
+      const html = await buildHtmlDocument({
+        title: docTitle.replace(/\.[^./]+$/, "") || docTitle,
+        markdown: content.value,
+        lang: document.documentElement.lang,
+      });
+      const saved = await invoke<MarkdownDocument>("write_markdown_file", {
+        path: selected,
+        content: html,
+      });
+      status.value = t("status.exportedHtml", { name: basename(saved.path) });
+    } catch (error) {
+      if (error instanceof ExportHtmlDocumentError && error.message === "empty") {
+        status.value = t("status.exportHtmlEmpty");
+        return;
+      }
+
+      status.value = t("status.exportHtmlFailed", { error: String(error) });
+    }
+  }
+
   async function printCurrentDocument() {
     if (content.value.trim().length === 0) {
       status.value = t("status.printEmpty");
@@ -517,6 +564,7 @@ export function useWorkspace() {
       listen("menu-save", () => saveFile(false)),
       listen("menu-save-as", () => saveFile(true)),
       listen("menu-print", () => printCurrentDocument()),
+      listen("menu-export-html", () => exportCurrentDocumentToHtml()),
       listen("workspace-file-changed", (event) =>
         handleWorkspaceFileChanged(event.payload as WorkspaceFileChanged),
       ),
@@ -553,6 +601,7 @@ export function useWorkspace() {
     openFolder,
     openNextFile,
     openPreviousFile,
+    exportCurrentDocumentToHtml,
     printCurrentDocument,
     reloadExternalChanges,
     renameFile,
