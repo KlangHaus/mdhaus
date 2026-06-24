@@ -48,6 +48,8 @@ export interface MessageSchema {
     untitled: string;
     language: string;
     theme: string;
+    metadata: string;
+    metadataHide: string;
   };
   files: {
     title: string;
@@ -85,6 +87,20 @@ export interface MessageSchema {
     toggleShow: string;
     toggleHide: string;
     close: string;
+  };
+  frontMatter: {
+    label: string;
+    title: string;
+    toggleShow: string;
+    toggleHide: string;
+    close: string;
+    titleLabel: string;
+    dateLabel: string;
+    authorLabel: string;
+    tagsLabel: string;
+    tagsHint: string;
+    emptyHint: string;
+    insert: string;
   };
   splitPane: {
     resize: string;

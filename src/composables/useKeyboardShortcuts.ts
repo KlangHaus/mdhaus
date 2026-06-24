@@ -15,6 +15,7 @@ export interface KeyboardShortcutActions {
 
 export interface KeyboardShortcutOptions {
   syntaxOpen: Ref<boolean>;
+  frontMatterOpen: Ref<boolean>;
   shortcutsOpen: Ref<boolean>;
   instructionsOpen: Ref<boolean>;
 }
@@ -51,6 +52,12 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions, options: 
       }
 
       if (options.syntaxOpen.value) {
+        event.preventDefault();
+        actions.closeOverlay();
+        return;
+      }
+
+      if (options.frontMatterOpen.value) {
         event.preventDefault();
         actions.closeOverlay();
       }

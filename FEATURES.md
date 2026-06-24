@@ -58,7 +58,7 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Pane layout switcher (split / editor / preview)
 - [ ] Read-only preview mode
 - [ ] Mermaid / diagram support
-- [ ] YAML front matter editor (title, tags, date)
+- [x] YAML front matter editor (title, tags, date)
 - [ ] Auto-generated document TOC export
 
 ## Internationalisation

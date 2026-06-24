@@ -5,6 +5,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { GTButton } from "@grundtone/vue";
 import ExternalChangeModal from "./ExternalChangeModal.vue";
 import FileTreeSidebar from "./FileTreeSidebar.vue";
+import FrontMatterSidebar from "./FrontMatterSidebar.vue";
 import InstructionsModal from "./InstructionsModal.vue";
 import LayoutSwitcher from "./LayoutSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
@@ -55,6 +56,7 @@ const {
 } = useWorkspace();
 
 const syntaxOpen = ref(false);
+const frontMatterOpen = ref(false);
 const shortcutsOpen = ref(false);
 const instructionsOpen = ref(false);
 const paneLayout = ref<PaneLayout>(loadPaneLayout());
@@ -163,10 +165,11 @@ useKeyboardShortcuts(
     closeOverlay: () => {
       shortcutsOpen.value = false;
       syntaxOpen.value = false;
+      frontMatterOpen.value = false;
       instructionsOpen.value = false;
     },
   },
-  { syntaxOpen, shortcutsOpen, instructionsOpen },
+  { syntaxOpen, shortcutsOpen, instructionsOpen, frontMatterOpen },
 );
 
 watch(title, (value) => {
@@ -188,6 +191,9 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="outlined" @click="saveFile(true)">{{ t("toolbar.saveAs") }}</GTButton>
       <GTButton size="sm" variant="outlined" @click="printCurrentDocument">{{ t("toolbar.print") }}</GTButton>
       <LayoutSwitcher v-model:layout="paneLayout" />
+      <GTButton size="sm" variant="outlined" @click="frontMatterOpen = !frontMatterOpen">
+        {{ frontMatterOpen ? t("toolbar.metadataHide") : t("toolbar.metadata") }}
+      </GTButton>
       <GTButton size="sm" variant="outlined" @click="syntaxOpen = !syntaxOpen">
         {{ syntaxOpen ? t("toolbar.syntaxHide") : t("toolbar.syntax") }}
       </GTButton>
@@ -227,6 +233,9 @@ function openShortcutsFromInstructions() {
               />
             </template>
           </SplitPane>
+          <div v-if="frontMatterOpen" class="workspace__front-matter-overlay">
+            <FrontMatterSidebar v-model:open="frontMatterOpen" :source="content" @apply="setContent" />
+          </div>
           <div v-if="syntaxOpen" class="workspace__syntax-overlay">
             <SyntaxSidebar v-model:open="syntaxOpen" />
           </div>
@@ -307,6 +316,17 @@ function openShortcutsFromInstructions() {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.workspace__front-matter-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+
+  :deep(.front-matter-aside) {
+    pointer-events: auto;
+  }
 }
 
 .workspace__syntax-overlay {
