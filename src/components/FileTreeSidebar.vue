@@ -1,0 +1,238 @@
+<script setup lang="ts">
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { GTButton } from "@grundtone/vue";
+import type { FileTreeNode } from "../types/files";
+import { filterFileTree, findCachedContentMatches } from "../lib/fileTree";
+import { useI18n } from "../i18n/useI18n";
+import FileTreeNodeItem from "./FileTreeNode.vue";
+
+const { t } = useI18n();
+
+const emit = defineEmits<{
+  "open-folder": [];
+  "create-file": [];
+  select: [path: string];
+}>();
+
+const props = defineProps<{
+  workspaceLabel: string;
+  workspaceRoot: string | null;
+  fileTree: FileTreeNode[];
+  activePath: string | null;
+  loadingPath: string | null;
+  dirtyPaths: Record<string, boolean>;
+  hasWorkspace: boolean;
+  cacheRevision: number;
+  getCachedContents: () => Record<string, string>;
+}>();
+
+const searchQuery = ref("");
+const contentMatchPaths = ref<Set<string>>(new Set());
+const contentSearching = ref(false);
+
+let searchGeneration = 0;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+const visibleTree = computed(() =>
+  filterFileTree(props.fileTree, searchQuery.value, contentMatchPaths.value),
+);
+
+async function runContentSearch(query: string) {
+  const needle = query.trim().toLowerCase();
+  if (needle.length < 2) {
+    contentMatchPaths.value = new Set();
+    contentSearching.value = false;
+    return;
+  }
+
+  const generation = ++searchGeneration;
+  contentSearching.value = true;
+
+  const cachedContents = props.getCachedContents();
+  const merged = findCachedContentMatches(cachedContents, needle);
+
+  if (props.workspaceRoot) {
+    try {
+      const diskMatches = await invoke<string[]>("search_markdown_content", {
+        root: props.workspaceRoot,
+        query: needle,
+      });
+
+      if (generation !== searchGeneration) {
+        return;
+      }
+
+      for (const path of diskMatches) {
+        if (!Object.prototype.hasOwnProperty.call(cachedContents, path)) {
+          merged.add(path);
+        }
+      }
+    } catch {
+      if (generation !== searchGeneration) {
+        return;
+      }
+    }
+  }
+
+  if (generation !== searchGeneration) {
+    return;
+  }
+
+  contentMatchPaths.value = merged;
+  contentSearching.value = false;
+}
+
+watch(
+  () => [searchQuery.value, props.cacheRevision, props.workspaceRoot] as const,
+  ([query]) => {
+    clearTimeout(searchTimer);
+
+    const needle = query.trim();
+    if (needle.length < 2) {
+      searchGeneration += 1;
+      contentMatchPaths.value = new Set();
+      contentSearching.value = false;
+      return;
+    }
+
+    contentSearching.value = true;
+    searchTimer = setTimeout(() => {
+      void runContentSearch(query);
+    }, 300);
+  },
+);
+
+onUnmounted(() => {
+  clearTimeout(searchTimer);
+  searchGeneration += 1;
+});
+
+watch(
+  () => props.activePath,
+  (path) => {
+    if (!path) {
+      return;
+    }
+
+    nextTick(() => {
+      const selector = `[data-file-path="${CSS.escape(path)}"]`;
+      document.querySelector(selector)?.scrollIntoView({ block: "nearest" });
+    });
+  },
+);
+</script>
+
+<template>
+  <aside class="file-sidebar cq-sidebar border-l bg-surface-raised flex flex-col min-h-0">
+    <header class="file-sidebar__header flex flex-col gap-2 p-3 border-b">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="file-sidebar__title text-sm font-bold m-0">{{ t("files.title") }}</h2>
+        <div class="file-sidebar__actions flex gap-1">
+          <GTButton size="sm" variant="primary" :disabled="!hasWorkspace" @click="emit('create-file')">
+            {{ t("files.new") }}
+          </GTButton>
+          <GTButton size="sm" variant="outlined" @click="emit('open-folder')">{{ t("files.folder") }}</GTButton>
+        </div>
+      </div>
+      <p class="file-sidebar__root text-secondary text-xs m-0 truncate" :title="workspaceLabel">
+        {{ workspaceLabel }}
+      </p>
+      <div class="file-sidebar__search-wrap">
+        <input
+          v-model="searchQuery"
+          type="search"
+          class="file-sidebar__search"
+          :placeholder="t('files.search')"
+          :disabled="fileTree.length === 0"
+        />
+        <p v-if="contentSearching" class="file-sidebar__search-status text-secondary text-xs m-0">
+          {{ t("files.searching") }}
+        </p>
+      </div>
+    </header>
+
+    <div class="file-sidebar__body flex-1 min-h-0 overflow-auto p-2">
+      <p v-if="fileTree.length === 0" class="file-sidebar__empty text-secondary text-sm m-0 p-2">
+        {{ t("files.empty") }}
+      </p>
+
+      <p v-else-if="visibleTree.length === 0" class="file-sidebar__empty text-secondary text-sm m-0 p-2">
+        {{ t("files.noMatch") }}
+      </p>
+
+      <ul v-else class="file-sidebar__tree">
+        <FileTreeNodeItem
+          v-for="node in visibleTree"
+          :key="node.path"
+          :node="node"
+          :depth="0"
+          :active-path="activePath"
+          :loading-path="loadingPath"
+          :dirty-paths="dirtyPaths"
+          @select="emit('select', $event)"
+        />
+      </ul>
+    </div>
+  </aside>
+</template>
+
+<style scoped lang="scss">
+.file-sidebar {
+  width: 17.5rem;
+  flex-shrink: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border-color: var(--color-border-light, #e4e4ec);
+}
+
+.file-sidebar__header {
+  flex-shrink: 0;
+  border-color: var(--color-border-light, #e4e4ec);
+}
+
+.file-sidebar__title {
+  color: var(--color-text, #111118);
+}
+
+.file-sidebar__search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.file-sidebar__search {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--color-border-light, #e4e4ec);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #111118);
+  font-size: 0.8rem;
+
+  &:focus {
+    outline: 2px solid color-mix(in srgb, var(--color-primary, #5b4cdb) 35%, transparent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.file-sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.file-sidebar__tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+</style>

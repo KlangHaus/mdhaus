@@ -1,13 +1,24 @@
 import { Renderer, marked } from "marked";
+import { slugifyHeading } from "./headings";
 
 const HEADING_SIZES = ["", "3xl", "2xl", "xl", "lg", "base", "sm"];
+const headingSlugCounts = new Map<string, number>();
+
+function nextHeadingId(plain: string): string {
+  const base = slugifyHeading(plain);
+  const count = headingSlugCounts.get(base) ?? 0;
+  headingSlugCounts.set(base, count + 1);
+  return count === 0 ? base : `${base}-${count}`;
+}
 
 const renderer = new Renderer();
 
 renderer.heading = ({ tokens, depth }) => {
   const text = renderer.parser.parseInline(tokens);
+  const plain = text.replace(/<[^>]+>/g, "");
+  const id = nextHeadingId(plain);
   const size = HEADING_SIZES[depth] ?? "base";
-  return `<h${depth} class="font-heading text-${size} font-bold mt-6 mb-3">${text}</h${depth}>`;
+  return `<h${depth} id="${id}" class="font-heading text-${size} font-bold mt-6 mb-3">${text}</h${depth}>`;
 };
 
 renderer.paragraph = ({ tokens }) =>
@@ -101,5 +112,6 @@ renderer.tablecell = (token) => {
 marked.setOptions({ gfm: true, breaks: true, renderer });
 
 export async function renderMarkdown(markdown: string): Promise<string> {
+  headingSlugCounts.clear();
   return marked.parse(markdown);
 }

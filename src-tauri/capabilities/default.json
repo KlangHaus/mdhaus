@@ -10,6 +10,9 @@
     "dialog:default",
     "opener:default",
     "allow-read-markdown-file",
-    "allow-write-markdown-file"
+    "allow-write-markdown-file",
+    "allow-list-markdown-tree",
+    "allow-search-markdown-content",
+    "allow-workspace-watch"
   ]
 }

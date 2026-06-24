@@ -345,10 +345,28 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the list_markdown_tree command.",
+          "type": "string",
+          "const": "allow-list-markdown-tree",
+          "markdownDescription": "Enables the list_markdown_tree command."
+        },
+        {
           "description": "Enables the read_markdown_file command.",
           "type": "string",
           "const": "allow-read-markdown-file",
           "markdownDescription": "Enables the read_markdown_file command."
+        },
+        {
+          "description": "Enables the search_markdown_content command.",
+          "type": "string",
+          "const": "allow-search-markdown-content",
+          "markdownDescription": "Enables the search_markdown_content command."
+        },
+        {
+          "description": "Enables workspace file watching commands.",
+          "type": "string",
+          "const": "allow-workspace-watch",
+          "markdownDescription": "Enables workspace file watching commands."
         },
         {
           "description": "Enables the write_markdown_file command.",

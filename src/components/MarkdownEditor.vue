@@ -6,6 +6,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { createEditorTheme } from "../lib/editorTheme";
+import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
 
 const props = defineProps<{
   modelValue: string;
@@ -13,10 +14,35 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
+  scroll: [ratio: number];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
+let ignoreNextScroll = false;
+let scrollCleanup: (() => void) | undefined;
+
+function applyScrollRatio(ratio: number) {
+  if (!view) {
+    return;
+  }
+
+  ignoreNextScroll = true;
+  setScrollRatio(view.scrollDOM, ratio);
+}
+
+function onScrollerScroll() {
+  if (!view || ignoreNextScroll) {
+    ignoreNextScroll = false;
+    return;
+  }
+
+  emit("scroll", getScrollRatio(view.scrollDOM));
+}
+
+defineExpose({
+  setScrollRatio: applyScrollRatio,
+});
 
 onMounted(() => {
   if (!host.value) {
@@ -42,6 +68,10 @@ onMounted(() => {
       ],
     }),
   });
+
+  const scroller = view.scrollDOM;
+  scroller.addEventListener("scroll", onScrollerScroll, { passive: true });
+  scrollCleanup = () => scroller.removeEventListener("scroll", onScrollerScroll);
 });
 
 watch(
@@ -61,6 +91,8 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  scrollCleanup?.();
+  scrollCleanup = undefined;
   view?.destroy();
   view = null;
 });
@@ -73,7 +105,13 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .markdown-editor {
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--color-surface-raised, #ffffff);
   color: var(--color-text, #111118);
+}
+
+.markdown-editor :deep(.cm-editor) {
+  height: 100%;
 }
 </style>

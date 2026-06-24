@@ -7,3 +7,18 @@ commands.allow = ["read_markdown_file"]
 identifier = "allow-write-markdown-file"
 description = "Enables the write_markdown_file command."
 commands.allow = ["write_markdown_file"]
+
+[[permission]]
+identifier = "allow-list-markdown-tree"
+description = "Enables the list_markdown_tree command."
+commands.allow = ["list_markdown_tree"]
+
+[[permission]]
+identifier = "allow-search-markdown-content"
+description = "Enables the search_markdown_content command."
+commands.allow = ["search_markdown_content"]
+
+[[permission]]
+identifier = "allow-workspace-watch"
+description = "Enables workspace file watching commands."
+commands.allow = ["start_workspace_watch", "stop_workspace_watch", "notify_file_saved"]

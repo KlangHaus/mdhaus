@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { GTButton, GTIcon } from "@grundtone/vue";
+import { useI18n } from "../i18n/useI18n";
 import MarkdownGuide from "./MarkdownGuide.vue";
 
 const open = defineModel<boolean>("open", { default: false });
+const { t } = useI18n();
 
-const toggleLabel = computed(() => (open.value ? "Skjul syntaks-guide" : "Vis syntaks-guide"));
+const toggleLabel = computed(() => (open.value ? t("syntax.toggleHide") : t("syntax.toggleShow")));
 const toggleIcon = computed(() => (open.value ? "chevron-right" : "chevron-left"));
 
 function toggle() {
@@ -29,18 +31,18 @@ function toggle() {
         @click="toggle"
       >
         <GTIcon :name="toggleIcon" size="sm" class="sidebar-icon" />
-        <span class="sidebar-text text-sm font-semibold">Syntaks</span>
+        <span class="sidebar-text text-sm font-semibold">{{ t("syntax.label") }}</span>
       </GTButton>
 
       <h2 v-if="open" class="syntax-aside__title sidebar-text text-sm font-bold m-0 flex-1">
-        Markdown-syntaks
+        {{ t("syntax.title") }}
       </h2>
 
       <GTButton
         v-if="open"
         size="sm"
         variant="unstyled"
-        aria-label="Luk syntaks-guide"
+        :aria-label="t('syntax.close')"
         @click="open = false"
       >
         <GTIcon name="chevron-right" size="sm" />
@@ -55,6 +57,11 @@ function toggle() {
 
 <style scoped lang="scss">
 .syntax-aside {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  z-index: 20;
   width: 3rem;
   transition: width 220ms ease;
   overflow: hidden;

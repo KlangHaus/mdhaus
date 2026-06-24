@@ -12,6 +12,7 @@ export function createEditorTheme(): Extension {
       backgroundColor: "var(--color-surface-raised, #ffffff)",
     },
     ".cm-scroller": {
+      height: "100%",
       overflow: "auto",
       fontFamily: "inherit",
       lineHeight: "1.6",

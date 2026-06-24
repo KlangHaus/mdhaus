@@ -52,7 +52,7 @@ const items: MarkdownGuideItem[] = [
   {
     title: "Tabel",
     description: "Kolonner adskilles med |. Header-rækken følges af en separator.",
-    syntax: "| Kolonne | Værdi |\n| ------- | ----- |\n| Navn    | MdHaus |",
+    syntax: "| Kolonne | Værdi |\n| ------- | ----- |\n| Navn    | open mdHaus |",
   },
   {
     title: "Vandret linje",

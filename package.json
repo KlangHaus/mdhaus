@@ -1,9 +1,9 @@
 {
-  "name": "mdhaus",
+  "name": "open-mdhaus",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Open-source Markdown editor with live split-pane preview for macOS",
+  "description": "open mdHaus — open-source Markdown editor with live split-pane preview for macOS",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MdHaus",
+  "productName": "open mdHaus",
   "version": "0.1.0",
-  "identifier": "com.klanghaus.mdhaus",
+  "identifier": "com.klanghaus.open-mdhaus",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MdHaus",
+        "title": "open mdHaus",
         "width": 1280,
         "height": 800,
         "minWidth": 800,
@@ -37,7 +37,7 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "Markdown editor with live preview",
-    "longDescription": "MdHaus is an open-source macOS markdown editor with a split-pane live preview, built with Tauri, Rust, and Vue."
+    "shortDescription": "Open markdown editor with live preview",
+    "longDescription": "open mdHaus is an open-source macOS markdown editor with a split-pane live preview, built with Tauri, Rust, and Vue."
   }
 }
