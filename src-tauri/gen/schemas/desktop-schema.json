@@ -345,6 +345,12 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the delete_markdown_path command.",
+          "type": "string",
+          "const": "allow-delete-markdown-path",
+          "markdownDescription": "Enables the delete_markdown_path command."
+        },
+        {
           "description": "Enables the list_markdown_tree command.",
           "type": "string",
           "const": "allow-list-markdown-tree",
@@ -355,6 +361,12 @@
           "type": "string",
           "const": "allow-read-markdown-file",
           "markdownDescription": "Enables the read_markdown_file command."
+        },
+        {
+          "description": "Enables the rename_markdown_path command.",
+          "type": "string",
+          "const": "allow-rename-markdown-path",
+          "markdownDescription": "Enables the rename_markdown_path command."
         },
         {
           "description": "Enables the search_markdown_content command.",

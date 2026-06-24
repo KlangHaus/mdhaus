@@ -14,6 +14,8 @@
     "allow-write-markdown-file",
     "allow-list-markdown-tree",
     "allow-search-markdown-content",
-    "allow-workspace-watch"
+    "allow-workspace-watch",
+    "allow-rename-markdown-path",
+    "allow-delete-markdown-path"
   ]
 }

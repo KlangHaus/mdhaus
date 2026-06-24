@@ -22,3 +22,13 @@ commands.allow = ["search_markdown_content"]
 identifier = "allow-workspace-watch"
 description = "Enables workspace file watching commands."
 commands.allow = ["start_workspace_watch", "stop_workspace_watch", "notify_file_saved"]
+
+[[permission]]
+identifier = "allow-rename-markdown-path"
+description = "Enables the rename_markdown_path command."
+commands.allow = ["rename_markdown_path"]
+
+[[permission]]
+identifier = "allow-delete-markdown-path"
+description = "Enables the delete_markdown_path command."
+commands.allow = ["delete_markdown_path"]

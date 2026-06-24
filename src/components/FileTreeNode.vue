@@ -16,6 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [path: string];
+  "file-context": [payload: { path: string; x: number; y: number }];
 }>();
 
 const expanded = ref(props.depth < 2);
@@ -28,6 +29,15 @@ function selectFile() {
   if (props.node.kind === "file") {
     emit("select", props.node.path);
   }
+}
+
+function onFileContextMenu(event: MouseEvent) {
+  if (props.node.kind !== "file") {
+    return;
+  }
+
+  event.preventDefault();
+  emit("file-context", { path: props.node.path, x: event.clientX, y: event.clientY });
 }
 </script>
 
@@ -55,6 +65,7 @@ function selectFile() {
       }"
       :style="{ paddingLeft: `${depth * 12 + 20}px` }"
       @click="selectFile"
+      @contextmenu="onFileContextMenu"
     >
       <span class="file-tree-node__name">{{ node.name }}</span>
       <span v-if="dirtyPaths[node.path]" class="file-tree-node__dirty" :aria-label="t('files.unsaved')">•</span>
@@ -70,6 +81,7 @@ function selectFile() {
         :loading-path="loadingPath"
         :dirty-paths="dirtyPaths"
         @select="emit('select', $event)"
+        @file-context="emit('file-context', $event)"
       />
     </ul>
   </li>

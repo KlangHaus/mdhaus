@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { renderMarkdown } from "../lib/markdown";
 import { extractHeadings } from "../lib/headings";
 import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
+import { TOC_SIDEBAR_OPEN_KEY, loadSidebarOpen, saveSidebarOpen } from "../types/sidebar";
 import { useI18n } from "../i18n/useI18n";
 
 const props = defineProps<{
@@ -21,6 +22,12 @@ const loading = ref(false);
 const articleRef = ref<HTMLElement | null>(null);
 const previewRef = ref<HTMLElement | null>(null);
 let ignoreNextScroll = false;
+
+const tocOpen = ref(loadSidebarOpen(TOC_SIDEBAR_OPEN_KEY));
+
+watch(tocOpen, (value) => {
+  saveSidebarOpen(TOC_SIDEBAR_OPEN_KEY, value);
+});
 
 const isEmpty = computed(() => props.source.trim().length === 0);
 const headings = computed(() => extractHeadings(props.source));
@@ -93,9 +100,27 @@ function onArticleClick(event: MouseEvent) {
   <section ref="previewRef" class="markdown-preview">
     <p v-if="isEmpty" class="placeholder text-secondary">{{ t("preview.empty") }}</p>
     <p v-else-if="loading" class="placeholder text-secondary">{{ t("preview.rendering") }}</p>
-    <div v-else class="markdown-preview__layout">
-      <nav v-if="headings.length > 0" class="markdown-preview__toc" :aria-label="t('preview.tocTitle')">
-        <h3 class="markdown-preview__toc-title">{{ t("preview.tocTitle") }}</h3>
+    <div
+      v-else
+      class="markdown-preview__layout"
+      :class="{
+        'markdown-preview__layout--no-toc': headings.length === 0,
+        'markdown-preview__layout--toc-collapsed': headings.length > 0 && !tocOpen,
+      }"
+    >
+      <nav v-if="headings.length > 0 && tocOpen" class="markdown-preview__toc" :aria-label="t('preview.tocTitle')">
+        <div class="markdown-preview__toc-header">
+          <h3 class="markdown-preview__toc-title">{{ t("preview.tocTitle") }}</h3>
+          <button
+            type="button"
+            class="markdown-preview__toc-toggle"
+            :aria-label="t('preview.collapseToc')"
+            :title="t('preview.collapseToc')"
+            @click="tocOpen = false"
+          >
+            ‹
+          </button>
+        </div>
         <ul class="markdown-preview__toc-list">
           <li
             v-for="heading in headings"
@@ -110,9 +135,20 @@ function onArticleClick(event: MouseEvent) {
         </ul>
       </nav>
 
+      <button
+        v-if="headings.length > 0 && !tocOpen"
+        type="button"
+        class="markdown-preview__toc-expand"
+        :aria-label="t('preview.expandToc')"
+        :title="t('preview.expandToc')"
+        @click="tocOpen = true"
+      >
+        ›
+      </button>
+
       <article
         ref="articleRef"
-        class="container-prose prose markdown-content markdown-preview__article"
+        class="prose markdown-content markdown-preview__article"
         v-html="html"
         @click="onArticleClick"
       />
@@ -135,8 +171,24 @@ function onArticleClick(event: MouseEvent) {
 .markdown-preview__layout {
   display: grid;
   grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);
+  grid-template-areas: "toc article";
   gap: 1.25rem;
   align-items: start;
+}
+
+.markdown-preview__layout--no-toc {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "article";
+}
+
+.markdown-preview__layout--toc-collapsed {
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+}
+
+.markdown-preview__toc,
+.markdown-preview__toc-expand {
+  grid-area: toc;
+  min-width: 0;
 }
 
 .markdown-preview__toc {
@@ -144,13 +196,49 @@ function onArticleClick(event: MouseEvent) {
   top: 0;
 }
 
+.markdown-preview__toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
 .markdown-preview__toc-title {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-secondary, #5c5c6f);
+}
+
+.markdown-preview__toc-toggle,
+.markdown-preview__toc-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--color-border-light, #e4e4ec);
+  border-radius: 6px;
+  background: var(--color-surface-raised, #fff);
+  color: var(--color-text-secondary, #5c5c6f);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--color-primary, #5b4cdb);
+    border-color: color-mix(in srgb, var(--color-primary, #5b4cdb) 35%, var(--color-border-light, #e4e4ec));
+  }
+}
+
+.markdown-preview__toc-expand {
+  position: sticky;
+  top: 0;
+  align-self: start;
 }
 
 .markdown-preview__toc-list {
@@ -179,7 +267,10 @@ function onArticleClick(event: MouseEvent) {
 }
 
 .markdown-preview__article {
+  grid-area: article;
   min-width: 0;
+  width: 100%;
+  max-width: 65ch;
 
   :deep(h1),
   :deep(h2),
@@ -197,8 +288,17 @@ function onArticleClick(event: MouseEvent) {
 }
 
 @media (max-width: 900px) {
-  .markdown-preview__layout {
+  .markdown-preview__layout,
+  .markdown-preview__layout--toc-collapsed,
+  .markdown-preview__layout--no-toc {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "toc"
+      "article";
+  }
+
+  .markdown-preview__layout--no-toc {
+    grid-template-areas: "article";
   }
 
   .markdown-preview__toc {

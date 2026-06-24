@@ -6,13 +6,18 @@ import type { FileTreeNode } from "../types/files";
 import { filterFileTree, findCachedContentMatches } from "../lib/fileTree";
 import { useI18n } from "../i18n/useI18n";
 import FileTreeNodeItem from "./FileTreeNode.vue";
+import FileContextMenu from "./FileContextMenu.vue";
 
 const { t } = useI18n();
+
+const open = defineModel<boolean>("open", { default: true });
 
 const emit = defineEmits<{
   "open-folder": [];
   "create-file": [];
   select: [path: string];
+  rename: [path: string];
+  delete: [path: string];
 }>();
 
 const props = defineProps<{
@@ -30,6 +35,33 @@ const props = defineProps<{
 const searchQuery = ref("");
 const contentMatchPaths = ref<Set<string>>(new Set());
 const contentSearching = ref(false);
+const contextMenu = ref<{ path: string; x: number; y: number } | null>(null);
+
+function closeContextMenu() {
+  contextMenu.value = null;
+}
+
+function onFileContext(payload: { path: string; x: number; y: number }) {
+  contextMenu.value = payload;
+}
+
+function onContextRename() {
+  if (!contextMenu.value) {
+    return;
+  }
+
+  emit("rename", contextMenu.value.path);
+  closeContextMenu();
+}
+
+function onContextDelete() {
+  if (!contextMenu.value) {
+    return;
+  }
+
+  emit("delete", contextMenu.value.path);
+  closeContextMenu();
+}
 
 let searchGeneration = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -124,17 +156,38 @@ watch(
 </script>
 
 <template>
-  <aside class="file-sidebar cq-sidebar border-l bg-surface-raised flex flex-col min-h-0">
-    <header class="file-sidebar__header flex flex-col gap-2 p-3 border-b">
-      <div class="flex items-center justify-between gap-2">
-        <h2 class="file-sidebar__title text-sm font-bold m-0">{{ t("files.title") }}</h2>
-        <div class="file-sidebar__actions flex gap-1">
-          <GTButton size="sm" variant="primary" :disabled="!hasWorkspace" @click="emit('create-file')">
-            {{ t("files.new") }}
-          </GTButton>
-          <GTButton size="sm" variant="outlined" @click="emit('open-folder')">{{ t("files.folder") }}</GTButton>
+  <aside class="file-sidebar cq-sidebar border-l bg-surface-raised flex flex-col min-h-0" :class="{ 'file-sidebar--collapsed': !open }">
+    <button
+      v-if="!open"
+      type="button"
+      class="file-sidebar__expand"
+      :aria-label="t('files.expandSidebar')"
+      :title="t('files.expandSidebar')"
+      @click="open = true"
+    >
+      ‹
+    </button>
+
+    <template v-else>
+      <header class="file-sidebar__header flex flex-col gap-2 p-3 border-b">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="file-sidebar__title text-sm font-bold m-0">{{ t("files.title") }}</h2>
+          <div class="file-sidebar__actions flex gap-1">
+            <GTButton size="sm" variant="primary" :disabled="!hasWorkspace" @click="emit('create-file')">
+              {{ t("files.new") }}
+            </GTButton>
+            <GTButton size="sm" variant="outlined" @click="emit('open-folder')">{{ t("files.folder") }}</GTButton>
+            <button
+              type="button"
+              class="file-sidebar__collapse"
+              :aria-label="t('files.collapseSidebar')"
+              :title="t('files.collapseSidebar')"
+              @click="open = false"
+            >
+              ›
+            </button>
+          </div>
         </div>
-      </div>
       <p class="file-sidebar__root text-secondary text-xs m-0 truncate" :title="workspaceLabel">
         {{ workspaceLabel }}
       </p>
@@ -171,9 +224,20 @@ watch(
           :loading-path="loadingPath"
           :dirty-paths="dirtyPaths"
           @select="emit('select', $event)"
+          @file-context="onFileContext"
         />
       </ul>
     </div>
+    </template>
+
+    <FileContextMenu
+      :open="contextMenu !== null"
+      :x="contextMenu?.x ?? 0"
+      :y="contextMenu?.y ?? 0"
+      @close="closeContextMenu"
+      @rename="onContextRename"
+      @delete="onContextDelete"
+    />
   </aside>
 </template>
 
@@ -186,6 +250,40 @@ watch(
   max-height: 100%;
   overflow: hidden;
   border-color: var(--color-border-light, #e4e4ec);
+}
+
+.file-sidebar--collapsed {
+  width: 2.5rem;
+}
+
+.file-sidebar__expand,
+.file-sidebar__collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-border-light, #e4e4ec);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-secondary, #5c5c6f);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--color-primary, #5b4cdb);
+    border-color: color-mix(in srgb, var(--color-primary, #5b4cdb) 35%, var(--color-border-light, #e4e4ec));
+  }
+}
+
+.file-sidebar__expand {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  font-size: 1.1rem;
 }
 
 .file-sidebar__header {

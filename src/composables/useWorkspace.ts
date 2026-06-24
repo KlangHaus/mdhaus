@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { open, save, confirm } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n/useI18n";
 import type { FileTreeNode, MarkdownDocument } from "../types/files";
 import type {
@@ -18,6 +18,19 @@ const MARKDOWN_EXTENSIONS = ["md", "markdown", "mdx", "txt"];
 function basename(filePath: string): string {
   const parts = filePath.split("/");
   return parts[parts.length - 1] ?? filePath;
+}
+
+function dirname(filePath: string): string {
+  const lastSlash = filePath.lastIndexOf("/");
+  return lastSlash === -1 ? "" : filePath.slice(0, lastSlash);
+}
+
+function isValidFileName(name: string): boolean {
+  if (name.trim().length === 0) {
+    return false;
+  }
+
+  return !name.includes("/") && !name.includes("\\");
 }
 
 export function useWorkspace() {
@@ -373,6 +386,100 @@ export function useWorkspace() {
     status.value = t("status.reloadedFromDisk", { name: basename(path) });
   }
 
+  function migrateFilePath(from: string, to: string) {
+    if (contentCache.has(from)) {
+      contentCache.set(to, contentCache.get(from) ?? "");
+      contentCache.delete(from);
+      bumpCacheRevision();
+    }
+
+    if (dirtyPathMap.value[from]) {
+      const next = { ...dirtyPathMap.value };
+      delete next[from];
+      next[to] = true;
+      dirtyPathMap.value = next;
+    }
+
+    if (filePath.value === from) {
+      filePath.value = to;
+      dirty.value = isDirtyPath(to);
+    }
+  }
+
+  async function renameFile(from: string, newName: string) {
+    const trimmed = newName.trim();
+    if (!isValidFileName(trimmed)) {
+      status.value = t("status.invalidFileName");
+      return;
+    }
+
+    const parent = dirname(from);
+    const to = parent ? `${parent}/${trimmed}` : trimmed;
+    if (to === from) {
+      return;
+    }
+
+    status.value = t("status.saving");
+    try {
+      const renamedPath = await invoke<string>("rename_markdown_path", { from, to });
+      migrateFilePath(from, renamedPath);
+      await refreshWorkspaceTree();
+      status.value = t("status.renamedFile", { name: basename(renamedPath) });
+    } catch (error) {
+      const message = String(error);
+      status.value =
+        message.includes("Destination already exists")
+          ? t("status.fileExists")
+          : t("status.renameFailed", { error: message });
+    }
+  }
+
+  async function deleteFile(path: string) {
+    const name = basename(path);
+    const hasUnsaved = isDirtyPath(path) || (filePath.value === path && dirty.value);
+
+    const confirmed = await confirm(t("files.deleteConfirmBody", { name }), {
+      title: t("files.deleteConfirmTitle"),
+      kind: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (hasUnsaved) {
+      const forceDelete = await confirm(t("files.deleteDirtyBody", { name }), {
+        title: t("files.deleteDirtyTitle"),
+        kind: "warning",
+      });
+
+      if (!forceDelete) {
+        return;
+      }
+    }
+
+    try {
+      await invoke("delete_markdown_path", { path });
+      contentCache.delete(path);
+      bumpCacheRevision();
+      clearDirty(path);
+
+      if (filePath.value === path) {
+        const remaining = workspaceFiles.value.filter((candidate) => candidate !== path);
+        if (remaining.length > 0) {
+          await openFileFromTree(remaining[0]);
+        } else {
+          resetWelcome();
+        }
+      }
+
+      await refreshWorkspaceTree();
+      status.value = t("status.deletedFile", { name });
+    } catch (error) {
+      status.value = t("status.deleteFailed", { error: String(error) });
+    }
+  }
+
   async function printCurrentDocument() {
     if (content.value.trim().length === 0) {
       status.value = t("status.printEmpty");
@@ -440,6 +547,7 @@ export function useWorkspace() {
     keepExternalChanges,
     loadingPath,
     createNewFile,
+    deleteFile,
     openFile,
     openFileFromTree,
     openFolder,
@@ -447,6 +555,7 @@ export function useWorkspace() {
     openPreviousFile,
     printCurrentDocument,
     reloadExternalChanges,
+    renameFile,
     saveFile,
     setContent,
     status,

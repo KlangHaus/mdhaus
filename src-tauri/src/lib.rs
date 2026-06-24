@@ -164,6 +164,39 @@ fn search_markdown_content(root: String, query: String) -> Result<Vec<String>, S
     Ok(matches)
 }
 
+/// Rename a markdown file on disk.
+#[tauri::command]
+fn rename_markdown_path(from: String, to: String) -> Result<String, String> {
+    if from == to {
+        return Ok(to);
+    }
+
+    if Path::new(&to).exists() {
+        return Err("Destination already exists.".to_string());
+    }
+
+    if let Some(parent) = Path::new(&to).parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    std::fs::rename(&from, &to).map_err(|error| error.to_string())?;
+
+    Ok(to)
+}
+
+/// Delete a markdown file from disk.
+#[tauri::command]
+fn delete_markdown_path(path: String) -> Result<(), String> {
+    let meta = std::fs::metadata(&path).map_err(|error| error.to_string())?;
+    if meta.is_dir() {
+        return Err("Cannot delete directories.".to_string());
+    }
+
+    std::fs::remove_file(&path).map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
 #[tauri::command]
 fn list_markdown_tree(root: String) -> Result<Vec<FileTreeNode>, String> {
     let path = PathBuf::from(&root);
@@ -292,6 +325,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_markdown_file,
             write_markdown_file,
+            rename_markdown_path,
+            delete_markdown_path,
             list_markdown_tree,
             search_markdown_content,
             start_workspace_watch,

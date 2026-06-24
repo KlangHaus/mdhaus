@@ -60,11 +60,24 @@ export interface MessageSchema {
     noFolder: string;
     unsaved: string;
     untitledShort: string;
+    collapseSidebar: string;
+    expandSidebar: string;
+    rename: string;
+    delete: string;
+    renameTitle: string;
+    renameLabel: string;
+    renameConfirm: string;
+    deleteConfirmTitle: string;
+    deleteConfirmBody: string;
+    deleteDirtyTitle: string;
+    deleteDirtyBody: string;
   };
   preview: {
     empty: string;
     rendering: string;
     tocTitle: string;
+    collapseToc: string;
+    expandToc: string;
   };
   syntax: {
     label: string;
@@ -148,6 +161,12 @@ export interface MessageSchema {
     noFilesInWorkspace: string;
     reloadedFromDisk: string;
     keptUnsaved: string;
+    renamedFile: string;
+    renameFailed: string;
+    deletedFile: string;
+    deleteFailed: string;
+    invalidFileName: string;
+    fileExists: string;
   };
 }
 

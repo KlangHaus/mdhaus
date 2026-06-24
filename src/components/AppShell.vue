@@ -11,6 +11,7 @@ import LanguageSwitcher from "./LanguageSwitcher.vue";
 import ThemeSwitcher from "./ThemeSwitcher.vue";
 import MarkdownEditor from "./MarkdownEditor.vue";
 import MarkdownPreview from "./MarkdownPreview.vue";
+import RenameFileModal from "./RenameFileModal.vue";
 import ShortcutsModal from "./ShortcutsModal.vue";
 import SyntaxSidebar from "./SyntaxSidebar.vue";
 import SplitPane from "./SplitPane.vue";
@@ -18,6 +19,7 @@ import { useKeyboardShortcuts } from "../composables/useKeyboardShortcuts";
 import { useWorkspace } from "../composables/useWorkspace";
 import { formatDocumentStats, getDocumentStats } from "../lib/documentStats";
 import { findHeadingLineNumber } from "../lib/headings";
+import { FILES_SIDEBAR_OPEN_KEY, loadSidebarOpen, saveSidebarOpen } from "../types/sidebar";
 import { loadPaneLayout, savePaneLayout, type PaneLayout } from "../types/layout";
 import { useI18n } from "../i18n/useI18n";
 
@@ -27,6 +29,7 @@ const {
   content,
   cacheRevision,
   createNewFile,
+  deleteFile,
   dirty,
   dirtyPathMap,
   externalChange,
@@ -42,6 +45,7 @@ const {
   openPreviousFile,
   printCurrentDocument,
   reloadExternalChanges,
+  renameFile,
   saveFile,
   setContent,
   status,
@@ -54,12 +58,41 @@ const syntaxOpen = ref(false);
 const shortcutsOpen = ref(false);
 const instructionsOpen = ref(false);
 const paneLayout = ref<PaneLayout>(loadPaneLayout());
+const filesSidebarOpen = ref(loadSidebarOpen(FILES_SIDEBAR_OPEN_KEY));
+const renameTarget = ref<{ path: string; name: string } | null>(null);
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
 const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null);
 
 watch(paneLayout, (value) => {
   savePaneLayout(value);
 });
+
+watch(filesSidebarOpen, (value) => {
+  saveSidebarOpen(FILES_SIDEBAR_OPEN_KEY, value);
+});
+
+function basename(filePath: string): string {
+  const parts = filePath.split("/");
+  return parts[parts.length - 1] ?? filePath;
+}
+
+function onRenameRequest(path: string) {
+  renameTarget.value = { path, name: basename(path) };
+}
+
+async function onRenameConfirm(newName: string) {
+  if (!renameTarget.value) {
+    return;
+  }
+
+  const from = renameTarget.value.path;
+  renameTarget.value = null;
+  await renameFile(from, newName);
+}
+
+function onRenameClose() {
+  renameTarget.value = null;
+}
 
 function onEditorScroll(ratio: number) {
   if (paneLayout.value !== "split") {
@@ -171,7 +204,10 @@ function openShortcutsFromInstructions() {
     </header>
 
     <main class="app-shell__main flex-1">
-      <div class="workspace layout-with-sidebar h-full">
+      <div
+        class="workspace layout-with-sidebar h-full"
+        :class="{ 'layout-with-sidebar--files-collapsed': !filesSidebarOpen }"
+      >
         <div class="workspace__editor relative min-h-0 overflow-hidden">
           <SplitPane :layout="paneLayout">
             <template #left>
@@ -197,6 +233,7 @@ function openShortcutsFromInstructions() {
         </div>
 
         <FileTreeSidebar
+          v-model:open="filesSidebarOpen"
           :workspace-label="workspaceLabel"
           :workspace-root="workspaceRoot"
           :file-tree="fileTree"
@@ -209,6 +246,8 @@ function openShortcutsFromInstructions() {
           @open-folder="openFolder"
           @create-file="createNewFile"
           @select="openFileFromTree"
+          @rename="onRenameRequest"
+          @delete="deleteFile"
         />
       </div>
     </main>
@@ -224,6 +263,7 @@ function openShortcutsFromInstructions() {
       @reload="reloadExternalChanges"
       @keep="keepExternalChanges"
     />
+    <RenameFileModal :target="renameTarget" @close="onRenameClose" @confirm="onRenameConfirm" />
   </div>
 </template>
 
@@ -252,10 +292,14 @@ function openShortcutsFromInstructions() {
 
 .layout-with-sidebar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 17.5rem;
+  grid-template-columns: minmax(0, 1fr) var(--mdhaus-files-sidebar-width, 17.5rem);
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.layout-with-sidebar--files-collapsed {
+  --mdhaus-files-sidebar-width: 2.5rem;
 }
 
 .workspace__editor {

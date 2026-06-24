@@ -24,8 +24,9 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Create new file (`untitled.md`) in workspace
 - [x] Filter/search files in sidebar (name + content)
 - [ ] Create new folder from UI
-- [ ] Rename file from UI
-- [ ] Delete file from UI (with confirmation)
+- [x] Rename file from UI
+- [x] Delete file from UI (with confirmation)
+- [x] Collapsible files sidebar and preview contents (TOC) sidebar
 - [ ] Recent folders list
 - [ ] Recent files list
 - [ ] Pinned / favourite files
