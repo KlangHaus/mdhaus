@@ -10,16 +10,18 @@ import InstructionsModal from "./InstructionsModal.vue";
 import LayoutSwitcher from "./LayoutSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
 import ThemeSwitcher from "./ThemeSwitcher.vue";
+import EditorFontSizeControl from "./EditorFontSizeControl.vue";
 import MarkdownEditor from "./MarkdownEditor.vue";
 import MarkdownPreview from "./MarkdownPreview.vue";
 import RenameFileModal from "./RenameFileModal.vue";
+import CreateFolderModal from "./CreateFolderModal.vue";
 import ShortcutsModal from "./ShortcutsModal.vue";
 import SyntaxSidebar from "./SyntaxSidebar.vue";
 import SplitPane from "./SplitPane.vue";
 import { useKeyboardShortcuts } from "../composables/useKeyboardShortcuts";
 import { useWorkspace } from "../composables/useWorkspace";
 import { formatDocumentStats, getDocumentStats } from "../lib/documentStats";
-import { findHeadingLineNumber } from "../lib/headings";
+import { findHeadingLineNumber, findHeadingReference } from "../lib/headings";
 import { FILES_SIDEBAR_OPEN_KEY, loadSidebarOpen, saveSidebarOpen } from "../types/sidebar";
 import { loadPaneLayout, savePaneLayout, type PaneLayout } from "../types/layout";
 import { useI18n } from "../i18n/useI18n";
@@ -30,6 +32,8 @@ const {
   content,
   cacheRevision,
   createNewFile,
+  createNewFolder,
+  suggestNewFolderName,
   deleteFile,
   dirty,
   dirtyPathMap,
@@ -42,10 +46,14 @@ const {
   openFile,
   openFileFromTree,
   openFolder,
+  openRecentFolder,
+  openRecentFile,
   openNextFile,
   openPreviousFile,
   exportCurrentDocumentToHtml,
   printCurrentDocument,
+  recentFiles,
+  recentFolders,
   reloadExternalChanges,
   renameFile,
   saveFile,
@@ -54,6 +62,7 @@ const {
   title,
   workspaceLabel,
   workspaceRoot,
+  workspaceFiles,
 } = useWorkspace();
 
 const syntaxOpen = ref(false);
@@ -63,6 +72,8 @@ const instructionsOpen = ref(false);
 const paneLayout = ref<PaneLayout>(loadPaneLayout());
 const filesSidebarOpen = ref(loadSidebarOpen(FILES_SIDEBAR_OPEN_KEY));
 const renameTarget = ref<{ path: string; name: string } | null>(null);
+const createFolderOpen = ref(false);
+const createFolderDefaultName = ref("untitled-folder");
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
 const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null);
 
@@ -97,6 +108,20 @@ function onRenameClose() {
   renameTarget.value = null;
 }
 
+function onCreateFolderRequest() {
+  createFolderDefaultName.value = suggestNewFolderName();
+  createFolderOpen.value = true;
+}
+
+function onCreateFolderClose() {
+  createFolderOpen.value = false;
+}
+
+async function onCreateFolderConfirm(name: string) {
+  createFolderOpen.value = false;
+  await createNewFolder(name);
+}
+
 function onEditorScroll(ratio: number) {
   if (paneLayout.value !== "split") {
     return;
@@ -124,6 +149,32 @@ function onPreviewHeadingClick(id: string) {
       editorRef.value?.scrollToLine(line);
     }
   });
+}
+
+async function onPreviewWikilinkClick(payload: { path: string; heading: string | null }) {
+  if (paneLayout.value === "preview") {
+    paneLayout.value = "split";
+  }
+
+  await nextTick();
+  const opened = await openFileFromTree(payload.path);
+  if (!opened) {
+    status.value = t("status.wikilinkNotFound");
+    return;
+  }
+
+  if (!payload.heading) {
+    return;
+  }
+
+  await nextTick();
+  const reference = findHeadingReference(content.value, payload.heading);
+  if (reference === null) {
+    return;
+  }
+
+  editorRef.value?.scrollToLine(reference.line);
+  previewRef.value?.scrollToHeading(reference.id);
 }
 
 const documentStatsLabel = computed(() =>
@@ -202,6 +253,7 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="outlined" @click="instructionsOpen = true">{{ t("toolbar.instructions") }}</GTButton>
       <GTButton size="sm" variant="outlined" @click="shortcutsOpen = true">{{ t("toolbar.shortcuts") }}</GTButton>
       <LanguageSwitcher />
+      <EditorFontSizeControl />
       <ThemeSwitcher />
       <span class="toolbar__path text-secondary text-sm truncate">
         {{ filePath ?? t("toolbar.untitled") }}
@@ -230,8 +282,11 @@ function openShortcutsFromInstructions() {
               <MarkdownPreview
                 ref="previewRef"
                 :source="content"
+                :workspace-files="workspaceFiles"
+                :current-file-path="filePath"
                 @scroll="onPreviewScroll"
                 @heading-click="onPreviewHeadingClick"
+                @wikilink-click="onPreviewWikilinkClick"
               />
             </template>
           </SplitPane>
@@ -252,10 +307,15 @@ function openShortcutsFromInstructions() {
           :loading-path="loadingPath"
           :dirty-paths="dirtyPathMap"
           :has-workspace="hasWorkspace"
+          :recent-folders="recentFolders"
+          :recent-files="recentFiles"
           :cache-revision="cacheRevision"
           :get-cached-contents="getCachedContents"
           @open-folder="openFolder"
+          @open-recent-folder="openRecentFolder"
+          @open-recent-file="openRecentFile"
           @create-file="createNewFile"
+          @create-folder="onCreateFolderRequest"
           @select="openFileFromTree"
           @rename="onRenameRequest"
           @delete="deleteFile"
@@ -275,6 +335,12 @@ function openShortcutsFromInstructions() {
       @keep="keepExternalChanges"
     />
     <RenameFileModal :target="renameTarget" @close="onRenameClose" @confirm="onRenameConfirm" />
+    <CreateFolderModal
+      :open="createFolderOpen"
+      :default-name="createFolderDefaultName"
+      @close="onCreateFolderClose"
+      @confirm="onCreateFolderConfirm"
+    />
   </div>
 </template>
 

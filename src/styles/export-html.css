@@ -178,6 +178,17 @@ body {
   scroll-margin-top: 1rem;
 }
 
+.markdown-content .markdown-wikilink {
+  color: #5b4cdb;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.markdown-content .markdown-wikilink--missing {
+  color: #5c5c6f;
+  text-decoration: underline dotted;
+}
+
 @media print {
   body {
     background: #ffffff;

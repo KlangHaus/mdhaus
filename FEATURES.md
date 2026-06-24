@@ -23,12 +23,12 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] In-memory cache when switching files
 - [x] Create new file (`untitled.md`) in workspace
 - [x] Filter/search files in sidebar (name + content)
-- [ ] Create new folder from UI
+- [x] Create new folder from UI
 - [x] Rename file from UI
 - [x] Delete file from UI (with confirmation)
 - [x] Collapsible files sidebar and preview contents (TOC) sidebar
-- [ ] Recent folders list
-- [ ] Recent files list
+- [x] Recent folders list
+- [x] Recent files list
 - [ ] Pinned / favourite files
 - [x] Search file **contents** across workspace
 
@@ -73,14 +73,14 @@ Track planned and completed features. Mark done items with `[x]`.
 
 - [x] Grundtone `GrundtoneThemeProvider` (light/dark/auto)
 - [x] In-app theme mode toggle (light / dark / system) via `GTOverflowMenu` + `useTheme`
-- [ ] Editor font size preference
+- [x] Editor font size preference
 
 ## Export and interoperability
 
 - [x] Export current file to HTML
 - [x] Print current document (preview layout via `.prose`, ⌘P)
 - [ ] Export current file to PDF
-- [ ] Wikilink `[[note]]` compatibility (Obsidian-style)
+- [x] Wikilink `[[note]]` compatibility (Obsidian-style)
 - [ ] Respect `.gitignore` when scanning folders
 
 ## Git integration

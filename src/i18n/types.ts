@@ -51,10 +51,14 @@ export interface MessageSchema {
     theme: string;
     metadata: string;
     metadataHide: string;
+    fontSize: string;
+    increaseFontSize: string;
+    decreaseFontSize: string;
   };
   files: {
     title: string;
     new: string;
+    newFolder: string;
     folder: string;
     search: string;
     searching: string;
@@ -70,10 +74,15 @@ export interface MessageSchema {
     renameTitle: string;
     renameLabel: string;
     renameConfirm: string;
+    createFolderTitle: string;
+    createFolderLabel: string;
+    createFolderConfirm: string;
     deleteConfirmTitle: string;
     deleteConfirmBody: string;
     deleteDirtyTitle: string;
     deleteDirtyBody: string;
+    recentFolders: string;
+    recentFiles: string;
   };
   preview: {
     empty: string;
@@ -165,6 +174,11 @@ export interface MessageSchema {
     creatingFile: string;
     createdFile: string;
     createFileFailed: string;
+    creatingFolder: string;
+    createdFolder: string;
+    createFolderFailed: string;
+    folderExists: string;
+    wikilinkNotFound: string;
     opening: string;
     openedFile: string;
     openFailed: string;

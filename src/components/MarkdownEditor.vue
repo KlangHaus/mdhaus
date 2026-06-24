@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
+import { useEditorFontSize } from "../composables/useEditorFontSize";
 import { createEditorTheme } from "../lib/editorTheme";
 import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
+
+const { fontSize } = useEditorFontSize();
+const themeCompartment = new Compartment();
 
 const props = defineProps<{
   modelValue: string;
@@ -75,7 +79,7 @@ onMounted(() => {
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
-        createEditorTheme(),
+        themeCompartment.of(createEditorTheme(fontSize.value)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             emit("update:modelValue", update.state.doc.toString());
@@ -105,6 +109,16 @@ watch(
     }
   },
 );
+
+watch(fontSize, (size) => {
+  if (!view) {
+    return;
+  }
+
+  view.dispatch({
+    effects: themeCompartment.reconfigure(createEditorTheme(size)),
+  });
+});
 
 onBeforeUnmount(() => {
   scrollCleanup?.();

@@ -16,6 +16,7 @@
     "allow-search-markdown-content",
     "allow-workspace-watch",
     "allow-rename-markdown-path",
+    "allow-create-markdown-folder",
     "allow-delete-markdown-path"
   ]
 }

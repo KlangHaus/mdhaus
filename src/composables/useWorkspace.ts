@@ -9,7 +9,17 @@ import type {
   WorkspaceFileChanged,
   WorkspaceTreeChanged,
 } from "../types/workspace";
-import { flattenMarkdownFiles, nextUntitledPath } from "../lib/fileTree";
+import type { RecentFileEntry } from "../types/recent";
+import { flattenMarkdownFiles, flattenDirectoryPaths, nextUntitledFolderPath, nextUntitledPath } from "../lib/fileTree";
+import {
+  forgetRecentFile,
+  forgetRecentFolder,
+  getRecentFiles,
+  getRecentFolders,
+  recordRecentFile,
+  recordRecentFolder,
+  renameRecentFile,
+} from "../lib/recentPaths";
 import {
   buildHtmlDocument,
   defaultHtmlExportPath,
@@ -53,6 +63,25 @@ export function useWorkspace() {
   const dirtyPathMap = ref<Record<string, boolean>>({});
   const contentCache = new Map<string, string>();
   const cacheRevision = ref(0);
+  const recentFolders = ref(getRecentFolders());
+  const recentFiles = ref(getRecentFiles());
+
+  function touchRecentFolder(path: string) {
+    recentFolders.value = recordRecentFolder(path);
+  }
+
+  function touchRecentFile(path: string) {
+    let root = workspaceRoot.value;
+    if (!root || !path.startsWith(`${root}/`)) {
+      root = dirname(path);
+    }
+
+    if (root.length === 0) {
+      return;
+    }
+
+    recentFiles.value = recordRecentFile(path, root);
+  }
 
   function bumpCacheRevision() {
     cacheRevision.value += 1;
@@ -178,6 +207,7 @@ export function useWorkspace() {
       workspaceRoot.value = root;
       fileTree.value = tree;
       await startWorkspaceWatch(root);
+      touchRecentFolder(root);
       status.value = t("status.openedFolder", { name: basename(root) });
     } catch (error) {
       status.value = t("status.folderScanFailed", { error: String(error) });
@@ -220,6 +250,7 @@ export function useWorkspace() {
       filePath.value = doc.path;
       content.value = doc.content;
       dirty.value = false;
+      touchRecentFile(doc.path);
       status.value = t("status.openedFile", { name: basename(doc.path) });
     } catch (error) {
       status.value = t("status.openFailed", { error: String(error) });
@@ -252,9 +283,9 @@ export function useWorkspace() {
     await openAdjacentFile(-1);
   }
 
-  async function openFileFromTree(path: string) {
+  async function openFileFromTree(path: string): Promise<boolean> {
     if (filePath.value === path) {
-      return;
+      return true;
     }
 
     rememberCurrentFile();
@@ -265,8 +296,9 @@ export function useWorkspace() {
         content.value = contentCache.get(path) ?? "";
         filePath.value = path;
         dirty.value = isDirtyPath(path);
+        touchRecentFile(path);
         status.value = t("status.openedFile", { name: basename(path) });
-        return;
+        return true;
       }
 
       status.value = t("status.opening");
@@ -276,12 +308,64 @@ export function useWorkspace() {
       content.value = doc.content;
       filePath.value = path;
       dirty.value = false;
-      status.value = t("status.openedFile", { name: basename(path) });
+      touchRecentFile(doc.path);
+      status.value = t("status.openedFile", { name: basename(doc.path) });
+      return true;
     } catch (error) {
       status.value = t("status.openFailed", { error: String(error) });
+      return false;
     } finally {
       loadingPath.value = null;
     }
+  }
+
+  async function openRecentFolder(path: string) {
+    rememberCurrentFile();
+    await openFolderAt(path);
+    if (workspaceRoot.value !== path) {
+      recentFolders.value = forgetRecentFolder(path);
+    }
+  }
+
+  async function openRecentFile(entry: RecentFileEntry) {
+    rememberCurrentFile();
+
+    if (workspaceRoot.value !== entry.workspaceRoot) {
+      await openFolderAt(entry.workspaceRoot);
+      if (workspaceRoot.value !== entry.workspaceRoot) {
+        return;
+      }
+    }
+
+    const opened = await openFileFromTree(entry.path);
+    if (!opened) {
+      recentFiles.value = forgetRecentFile(entry.path);
+    }
+  }
+
+  function getCreateFolderParent(): string {
+    if (!workspaceRoot.value) {
+      return "";
+    }
+
+    if (filePath.value) {
+      const parent = dirname(filePath.value);
+      if (parent === workspaceRoot.value || parent.startsWith(`${workspaceRoot.value}/`)) {
+        return parent;
+      }
+    }
+
+    return workspaceRoot.value;
+  }
+
+  function suggestNewFolderName(): string {
+    if (!workspaceRoot.value) {
+      return "untitled-folder";
+    }
+
+    const parent = getCreateFolderParent();
+    const path = nextUntitledFolderPath(parent, flattenDirectoryPaths(fileTree.value));
+    return basename(path);
   }
 
   async function createNewFile() {
@@ -308,9 +392,39 @@ export function useWorkspace() {
       filePath.value = saved.path;
       content.value = saved.content;
       dirty.value = false;
+      touchRecentFile(saved.path);
       status.value = t("status.createdFile", { name: basename(saved.path) });
     } catch (error) {
       status.value = t("status.createFileFailed", { error: String(error) });
+    }
+  }
+
+  async function createNewFolder(folderName: string) {
+    if (!workspaceRoot.value) {
+      status.value = t("status.chooseFolderFirst");
+      return;
+    }
+
+    const trimmed = folderName.trim();
+    if (!isValidFileName(trimmed)) {
+      status.value = t("status.invalidFileName");
+      return;
+    }
+
+    const parent = getCreateFolderParent();
+    const target = `${parent}/${trimmed}`;
+
+    status.value = t("status.creatingFolder");
+    try {
+      await invoke<string>("create_markdown_folder", { path: target });
+      await refreshWorkspaceTree();
+      status.value = t("status.createdFolder", { name: trimmed });
+    } catch (error) {
+      const message = String(error);
+      status.value =
+        message.includes("Destination already exists")
+          ? t("status.folderExists")
+          : t("status.createFolderFailed", { error: message });
     }
   }
 
@@ -344,6 +458,7 @@ export function useWorkspace() {
       bumpCacheRevision();
       clearDirty(saved.path);
       dirty.value = false;
+      touchRecentFile(saved.path);
       await invoke("notify_file_saved", { path: saved.path });
       status.value = t("status.savedFile", { name: basename(saved.path) });
     } catch (error) {
@@ -428,6 +543,7 @@ export function useWorkspace() {
     try {
       const renamedPath = await invoke<string>("rename_markdown_path", { from, to });
       migrateFilePath(from, renamedPath);
+      recentFiles.value = renameRecentFile(from, renamedPath);
       await refreshWorkspaceTree();
       status.value = t("status.renamedFile", { name: basename(renamedPath) });
     } catch (error) {
@@ -468,6 +584,7 @@ export function useWorkspace() {
       contentCache.delete(path);
       bumpCacheRevision();
       clearDirty(path);
+      recentFiles.value = forgetRecentFile(path);
 
       if (filePath.value === path) {
         const remaining = workspaceFiles.value.filter((candidate) => candidate !== path);
@@ -511,6 +628,8 @@ export function useWorkspace() {
         title: docTitle.replace(/\.[^./]+$/, "") || docTitle,
         markdown: content.value,
         lang: document.documentElement.lang,
+        workspaceFiles: workspaceFiles.value,
+        currentFilePath: filePath.value,
       });
       const saved = await invoke<MarkdownDocument>("write_markdown_file", {
         path: selected,
@@ -541,6 +660,8 @@ export function useWorkspace() {
         title: docTitle,
         markdown: content.value,
         lang: document.documentElement.lang,
+        workspaceFiles: workspaceFiles.value,
+        currentFilePath: filePath.value,
       });
       status.value = t("status.printed", { name: docTitle });
     } catch (error) {
@@ -595,14 +716,20 @@ export function useWorkspace() {
     keepExternalChanges,
     loadingPath,
     createNewFile,
+    createNewFolder,
+    suggestNewFolderName,
     deleteFile,
     openFile,
     openFileFromTree,
     openFolder,
+    openRecentFolder,
+    openRecentFile,
     openNextFile,
     openPreviousFile,
     exportCurrentDocumentToHtml,
     printCurrentDocument,
+    recentFiles,
+    recentFolders,
     reloadExternalChanges,
     renameFile,
     saveFile,

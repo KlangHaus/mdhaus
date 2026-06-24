@@ -1,12 +1,13 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { DEFAULT_EDITOR_FONT_SIZE } from "../types/editorFontSize";
 
 /** CodeMirror theme synced with Grundtone design tokens. */
-export function createEditorTheme(): Extension {
+export function createEditorTheme(fontSizePx = DEFAULT_EDITOR_FONT_SIZE): Extension {
   return EditorView.theme({
     "&": {
       height: "100%",
-      fontSize: "14px",
+      fontSize: `${fontSizePx}px`,
       fontFamily: "var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
       color: "var(--color-text, #111118)",
       backgroundColor: "var(--color-surface-raised, #ffffff)",

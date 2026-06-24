@@ -36,12 +36,17 @@ export async function buildHtmlDocument(options: {
   title: string;
   markdown: string;
   lang?: string;
+  workspaceFiles?: string[];
+  currentFilePath?: string | null;
 }): Promise<string> {
   if (options.markdown.trim().length === 0) {
     throw new ExportHtmlDocumentError("empty");
   }
 
-  const bodyHtml = await renderMarkdown(options.markdown);
+  const bodyHtml = await renderMarkdown(options.markdown, {
+    workspaceFiles: options.workspaceFiles ?? [],
+    currentFilePath: options.currentFilePath ?? null,
+  });
   const parsed = parseFrontMatterDocument(options.markdown);
   const pageTitle = parsed.fields.title.trim() || options.title;
   const lang = escapeHtml(options.lang ?? "en");

@@ -3,6 +3,8 @@ import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { GTButton } from "@grundtone/vue";
 import type { FileTreeNode } from "../types/files";
+import type { RecentFileEntry } from "../types/recent";
+import { basename, recentFileSubtitle } from "../types/recent";
 import { filterFileTree, findCachedContentMatches } from "../lib/fileTree";
 import { useI18n } from "../i18n/useI18n";
 import FileTreeNodeItem from "./FileTreeNode.vue";
@@ -14,7 +16,10 @@ const open = defineModel<boolean>("open", { default: true });
 
 const emit = defineEmits<{
   "open-folder": [];
+  "open-recent-folder": [path: string];
+  "open-recent-file": [entry: RecentFileEntry];
   "create-file": [];
+  "create-folder": [];
   select: [path: string];
   rename: [path: string];
   delete: [path: string];
@@ -28,6 +33,8 @@ const props = defineProps<{
   loadingPath: string | null;
   dirtyPaths: Record<string, boolean>;
   hasWorkspace: boolean;
+  recentFolders: string[];
+  recentFiles: RecentFileEntry[];
   cacheRevision: number;
   getCachedContents: () => Record<string, string>;
 }>();
@@ -69,6 +76,8 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 const visibleTree = computed(() =>
   filterFileTree(props.fileTree, searchQuery.value, contentMatchPaths.value),
 );
+
+const showRecentSections = computed(() => searchQuery.value.trim().length < 2);
 
 async function runContentSearch(query: string) {
   const needle = query.trim().toLowerCase();
@@ -176,6 +185,9 @@ watch(
             <GTButton size="sm" variant="primary" :disabled="!hasWorkspace" @click="emit('create-file')">
               {{ t("files.new") }}
             </GTButton>
+            <GTButton size="sm" variant="outlined" :disabled="!hasWorkspace" @click="emit('create-folder')">
+              {{ t("files.newFolder") }}
+            </GTButton>
             <GTButton size="sm" variant="outlined" @click="emit('open-folder')">{{ t("files.folder") }}</GTButton>
             <button
               type="button"
@@ -206,6 +218,49 @@ watch(
     </header>
 
     <div class="file-sidebar__body flex-1 min-h-0 overflow-auto p-2">
+      <section
+        v-if="showRecentSections && !hasWorkspace && recentFolders.length > 0"
+        class="file-sidebar__recent"
+        :aria-label="t('files.recentFolders')"
+      >
+        <h3 class="file-sidebar__recent-title">{{ t("files.recentFolders") }}</h3>
+        <ul class="file-sidebar__recent-list">
+          <li v-for="folderPath in recentFolders" :key="folderPath">
+            <button
+              type="button"
+              class="file-sidebar__recent-item"
+              :title="folderPath"
+              @click="emit('open-recent-folder', folderPath)"
+            >
+              <span class="file-sidebar__recent-name">{{ basename(folderPath) }}</span>
+              <span class="file-sidebar__recent-meta">{{ folderPath }}</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        v-if="showRecentSections && recentFiles.length > 0"
+        class="file-sidebar__recent"
+        :aria-label="t('files.recentFiles')"
+      >
+        <h3 class="file-sidebar__recent-title">{{ t("files.recentFiles") }}</h3>
+        <ul class="file-sidebar__recent-list">
+          <li v-for="entry in recentFiles" :key="entry.path">
+            <button
+              type="button"
+              class="file-sidebar__recent-item"
+              :class="{ 'file-sidebar__recent-item--active': entry.path === activePath }"
+              :title="entry.path"
+              @click="emit('open-recent-file', entry)"
+            >
+              <span class="file-sidebar__recent-name">{{ basename(entry.path) }}</span>
+              <span class="file-sidebar__recent-meta">{{ recentFileSubtitle(entry) }}</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
       <p v-if="fileTree.length === 0" class="file-sidebar__empty text-secondary text-sm m-0 p-2">
         {{ t("files.empty") }}
       </p>
@@ -332,5 +387,66 @@ watch(
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.file-sidebar__recent {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border-light, #e4e4ec);
+}
+
+.file-sidebar__recent-title {
+  margin: 0 0 0.35rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #5c5c6f);
+}
+
+.file-sidebar__recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.file-sidebar__recent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text, #111118);
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary, #5b4cdb) 8%, transparent);
+  }
+}
+
+.file-sidebar__recent-item--active {
+  background: color-mix(in srgb, var(--color-primary, #5b4cdb) 12%, transparent);
+}
+
+.file-sidebar__recent-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.file-sidebar__recent-meta {
+  max-width: 100%;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--color-text-secondary, #5c5c6f);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

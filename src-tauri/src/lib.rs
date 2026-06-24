@@ -81,9 +81,6 @@ fn build_markdown_tree(dir: &Path) -> Result<Vec<FileTreeNode>, String> {
             }
 
             let children = build_markdown_tree(&path)?;
-            if children.is_empty() {
-                continue;
-            }
 
             nodes.push(FileTreeNode {
                 name,
@@ -182,6 +179,19 @@ fn rename_markdown_path(from: String, to: String) -> Result<String, String> {
     std::fs::rename(&from, &to).map_err(|error| error.to_string())?;
 
     Ok(to)
+}
+
+/// Create a folder on disk.
+#[tauri::command]
+fn create_markdown_folder(path: String) -> Result<String, String> {
+    let folder = Path::new(&path);
+    if folder.exists() {
+        return Err("Destination already exists.".to_string());
+    }
+
+    std::fs::create_dir_all(&path).map_err(|error| error.to_string())?;
+
+    Ok(path)
 }
 
 /// Delete a markdown file from disk.
@@ -329,6 +339,7 @@ pub fn run() {
             read_markdown_file,
             write_markdown_file,
             rename_markdown_path,
+            create_markdown_folder,
             delete_markdown_path,
             list_markdown_tree,
             search_markdown_content,

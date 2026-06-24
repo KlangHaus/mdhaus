@@ -345,6 +345,12 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the create_markdown_folder command.",
+          "type": "string",
+          "const": "allow-create-markdown-folder",
+          "markdownDescription": "Enables the create_markdown_folder command."
+        },
+        {
           "description": "Enables the delete_markdown_path command.",
           "type": "string",
           "const": "allow-delete-markdown-path",

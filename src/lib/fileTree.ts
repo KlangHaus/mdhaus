@@ -1,5 +1,35 @@
 import type { FileTreeNode } from "../types/files";
 
+/** Depth-first list of directory paths in sidebar order. */
+export function flattenDirectoryPaths(nodes: FileTreeNode[]): string[] {
+  const paths: string[] = [];
+
+  for (const node of nodes) {
+    if (node.kind !== "dir") {
+      continue;
+    }
+
+    paths.push(node.path);
+    paths.push(...flattenDirectoryPaths(node.children));
+  }
+
+  return paths;
+}
+
+/** Pick the first free untitled-folder, untitled-folder-1, … path under a parent. */
+export function nextUntitledFolderPath(parent: string, existingDirPaths: string[]): string {
+  const existing = new Set(existingDirPaths);
+  let candidate = joinPath(parent, "untitled-folder");
+  let counter = 1;
+
+  while (existing.has(candidate)) {
+    candidate = joinPath(parent, `untitled-folder-${counter}`);
+    counter += 1;
+  }
+
+  return candidate;
+}
+
 /** Depth-first list of markdown file paths in sidebar order. */
 export function flattenMarkdownFiles(nodes: FileTreeNode[]): string[] {
   const paths: string[] = [];

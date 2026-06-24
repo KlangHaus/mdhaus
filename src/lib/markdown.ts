@@ -5,6 +5,7 @@ import {
   slugifyHeading,
   stripYamlFrontMatter,
 } from "./headings";
+import { replaceWikilinks, type WikilinkRenderContext } from "./wikilinks";
 
 const HEADING_SIZES = ["", "3xl", "2xl", "xl", "lg", "base", "sm"];
 const headingSlugCounts = new Map<string, number>();
@@ -119,11 +120,17 @@ renderer.tablecell = (token) => {
 
 marked.setOptions({ gfm: true, breaks: true, renderer });
 
-export async function renderMarkdown(markdown: string): Promise<string> {
+export interface RenderMarkdownOptions extends WikilinkRenderContext {}
+
+export async function renderMarkdown(
+  markdown: string,
+  options: RenderMarkdownOptions = { workspaceFiles: [], currentFilePath: null },
+): Promise<string> {
   const outline = buildDocumentOutline(markdown);
   const yamlTitle = outline.find((entry) => entry.kind === "yaml-title");
   const { body } = stripYamlFrontMatter(markdown);
   let preparedBody = injectSectionAnchors(body, outline);
+  preparedBody = replaceWikilinks(preparedBody, options);
 
   if (yamlTitle) {
     preparedBody = `<div id="${yamlTitle.id}" class="markdown-section-anchor"></div>\n\n${preparedBody}`;

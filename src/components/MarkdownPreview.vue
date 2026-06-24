@@ -8,11 +8,14 @@ import { useI18n } from "../i18n/useI18n";
 
 const props = defineProps<{
   source: string;
+  workspaceFiles: string[];
+  currentFilePath: string | null;
 }>();
 
 const emit = defineEmits<{
   scroll: [ratio: number];
   "heading-click": [id: string];
+  "wikilink-click": [payload: { path: string; heading: string | null }];
 }>();
 
 const { t } = useI18n();
@@ -52,6 +55,7 @@ function onPreviewScroll() {
 
 defineExpose({
   setScrollRatio: applyScrollRatio,
+  scrollToHeading,
 });
 
 onMounted(() => {
@@ -63,11 +67,14 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => props.source,
-  async (source) => {
+  () => [props.source, props.workspaceFiles, props.currentFilePath] as const,
+  async ([source]) => {
     loading.value = true;
     try {
-      html.value = await renderMarkdown(source);
+      html.value = await renderMarkdown(source, {
+        workspaceFiles: props.workspaceFiles,
+        currentFilePath: props.currentFilePath,
+      });
     } finally {
       loading.value = false;
     }
@@ -87,6 +94,19 @@ function onHeadingActivate(id: string) {
 }
 
 function onArticleClick(event: MouseEvent) {
+  const wikilink = (event.target as HTMLElement).closest("a.markdown-wikilink");
+  if (wikilink && articleRef.value?.contains(wikilink)) {
+    event.preventDefault();
+    const path = wikilink.getAttribute("data-wikilink-path");
+    if (!path) {
+      return;
+    }
+
+    const heading = wikilink.getAttribute("data-wikilink-heading");
+    emit("wikilink-click", { path, heading: heading && heading.length > 0 ? heading : null });
+    return;
+  }
+
   const heading = (event.target as HTMLElement).closest("h1, h2, h3, h4, h5, h6");
   if (!heading?.id || !articleRef.value?.contains(heading)) {
     return;

@@ -173,6 +173,41 @@ export function extractHeadings(source: string): MarkdownHeading[] {
   return buildDocumentOutline(source).map(({ level, text, id }) => ({ level, text, id }));
 }
 
+/** Find a heading by slug, id, or visible title text. */
+export function findHeadingReference(
+  source: string,
+  reference: string,
+): { id: string; line: number } | null {
+  const trimmed = reference.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  const outline = buildDocumentOutline(source);
+  const byId = outline.find((entry) => entry.id === trimmed);
+  if (byId) {
+    return { id: byId.id, line: byId.line };
+  }
+
+  const slug = slugifyHeading(trimmed);
+  const bySlug = outline.find((entry) => entry.id === slug || entry.id.startsWith(`${slug}-`));
+  if (bySlug) {
+    return { id: bySlug.id, line: bySlug.line };
+  }
+
+  const lower = trimmed.toLowerCase();
+  const byText = outline.find((entry) => {
+    const plain = stripInlineMarkdown(entry.text);
+    return plain.toLowerCase() === lower || entry.text.toLowerCase() === lower;
+  });
+
+  if (byText) {
+    return { id: byText.id, line: byText.line };
+  }
+
+  return null;
+}
+
 /** Find the 1-based source line for a heading id from the document outline. */
 export function findHeadingLineNumber(source: string, headingId: string): number | null {
   const entry = buildDocumentOutline(source).find((heading) => heading.id === headingId);

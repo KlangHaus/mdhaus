@@ -57,4 +57,17 @@
     overflow: hidden;
     scroll-margin-top: 1rem;
   }
+
+  .markdown-wikilink {
+    color: var(--color-primary, #5b4cdb);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+  }
+
+  .markdown-wikilink--missing {
+    color: var(--color-text-secondary, #5c5c6f);
+    text-decoration: underline dotted;
+    cursor: default;
+  }
 }

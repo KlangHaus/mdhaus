@@ -35,12 +35,17 @@ export async function printMarkdownDocument(options: {
   title: string;
   markdown: string;
   lang?: string;
+  workspaceFiles?: string[];
+  currentFilePath?: string | null;
 }): Promise<void> {
   if (options.markdown.trim().length === 0) {
     throw new PrintDocumentError("empty");
   }
 
-  const bodyHtml = await renderMarkdown(options.markdown);
+  const bodyHtml = await renderMarkdown(options.markdown, {
+    workspaceFiles: options.workspaceFiles ?? [],
+    currentFilePath: options.currentFilePath ?? null,
+  });
   const lang = escapeHtml(options.lang ?? "en");
   const root = getPrintRoot();
 
