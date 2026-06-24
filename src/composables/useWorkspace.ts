@@ -10,6 +10,7 @@ import type {
   WorkspaceTreeChanged,
 } from "../types/workspace";
 import { flattenMarkdownFiles, nextUntitledPath } from "../lib/fileTree";
+import { PrintDocumentError, printMarkdownDocument } from "../lib/printDocument";
 import { APP_NAME } from "../lib/brand";
 
 const MARKDOWN_EXTENSIONS = ["md", "markdown", "mdx", "txt"];
@@ -372,6 +373,32 @@ export function useWorkspace() {
     status.value = t("status.reloadedFromDisk", { name: basename(path) });
   }
 
+  async function printCurrentDocument() {
+    if (content.value.trim().length === 0) {
+      status.value = t("status.printEmpty");
+      return;
+    }
+
+    const docTitle = filePath.value ? basename(filePath.value) : t("files.untitledShort");
+    status.value = t("status.printing");
+
+    try {
+      await printMarkdownDocument({
+        title: docTitle,
+        markdown: content.value,
+        lang: document.documentElement.lang,
+      });
+      status.value = t("status.printed", { name: docTitle });
+    } catch (error) {
+      if (error instanceof PrintDocumentError && error.message === "empty") {
+        status.value = t("status.printEmpty");
+        return;
+      }
+
+      status.value = t("status.printFailed", { error: String(error) });
+    }
+  }
+
   let unlisteners: UnlistenFn[] = [];
 
   onMounted(async () => {
@@ -382,6 +409,7 @@ export function useWorkspace() {
       listen("menu-prev-file", () => openPreviousFile()),
       listen("menu-save", () => saveFile(false)),
       listen("menu-save-as", () => saveFile(true)),
+      listen("menu-print", () => printCurrentDocument()),
       listen("workspace-file-changed", (event) =>
         handleWorkspaceFileChanged(event.payload as WorkspaceFileChanged),
       ),
@@ -417,6 +445,7 @@ export function useWorkspace() {
     openFolder,
     openNextFile,
     openPreviousFile,
+    printCurrentDocument,
     reloadExternalChanges,
     saveFile,
     setContent,

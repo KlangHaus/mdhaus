@@ -98,6 +98,7 @@ function shortcutGroups(): ShortcutGroup[] {
         { keys: "⌘⇧O", label: translate("shortcuts.openFolder") },
         { keys: "⌘S", label: translate("shortcuts.save") },
         { keys: "⌘⇧S", label: translate("shortcuts.saveAs") },
+        { keys: "⌘P", label: translate("shortcuts.print") },
         { keys: "⌥⌘↓", label: translate("shortcuts.nextFile") },
         { keys: "⌥⌘↑", label: translate("shortcuts.prevFile") },
       ],

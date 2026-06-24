@@ -77,6 +77,7 @@ Track planned and completed features. Mark done items with `[x]`.
 ## Export and interoperability
 
 - [ ] Export current file to HTML
+- [x] Print current document (preview layout via `.prose`, ⌘P)
 - [ ] Export current file to PDF
 - [ ] Wikilink `[[note]]` compatibility (Obsidian-style)
 - [ ] Respect `.gitignore` when scanning folders

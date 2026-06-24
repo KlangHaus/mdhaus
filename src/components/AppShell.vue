@@ -39,6 +39,7 @@ const {
   openFolder,
   openNextFile,
   openPreviousFile,
+  printCurrentDocument,
   reloadExternalChanges,
   saveFile,
   setContent,
@@ -103,6 +104,7 @@ useKeyboardShortcuts(
     openFolder,
     saveFile: () => saveFile(false),
     saveAs: () => saveFile(true),
+    printDocument: printCurrentDocument,
     openNextFile,
     openPreviousFile,
     toggleSyntax: () => {
@@ -137,6 +139,7 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="secondary" @click="openFile">{{ t("toolbar.openFile") }}</GTButton>
       <GTButton size="sm" variant="primary" @click="saveFile(false)">{{ t("toolbar.save") }}</GTButton>
       <GTButton size="sm" variant="outlined" @click="saveFile(true)">{{ t("toolbar.saveAs") }}</GTButton>
+      <GTButton size="sm" variant="outlined" @click="printCurrentDocument">{{ t("toolbar.print") }}</GTButton>
       <LayoutSwitcher v-model:layout="paneLayout" />
       <GTButton size="sm" variant="outlined" @click="syntaxOpen = !syntaxOpen">
         {{ syntaxOpen ? t("toolbar.syntaxHide") : t("toolbar.syntax") }}

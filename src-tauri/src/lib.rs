@@ -181,6 +181,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let save_item = MenuItem::with_id(app, "save", "Save", true, Some("CmdOrCtrl+S"))?;
     let save_as_item =
         MenuItem::with_id(app, "save_as", "Save As…", true, Some("CmdOrCtrl+Shift+S"))?;
+    let print_item = MenuItem::with_id(app, "print", "Print…", true, Some("CmdOrCtrl+P"))?;
 
     let prev_file_item =
         MenuItem::with_id(app, "prev_file", "Previous File", true, Some("Alt+CmdOrCtrl+Up"))?;
@@ -200,6 +201,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &open_folder_item,
             &save_item,
             &save_as_item,
+            &print_item,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::close_window(app, None)?,
         ],
@@ -315,6 +317,7 @@ pub fn run() {
                     "instructions" => Some("menu-instructions"),
                     "save" => Some("menu-save"),
                     "save_as" => Some("menu-save-as"),
+                    "print" => Some("menu-print"),
                     _ => None,
                 };
 

@@ -1,0 +1,81 @@
+@page {
+  margin: 18mm 16mm;
+}
+
+#mdhaus-print-root {
+  display: none;
+}
+
+@media print {
+  html,
+  body,
+  #app {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.mdhaus-printing {
+    background: var(--color-background, #f8f8fb);
+    color: var(--color-text, #111118);
+  }
+
+  body.mdhaus-printing > *:not(#mdhaus-print-root) {
+    display: none !important;
+  }
+
+  body.mdhaus-printing #mdhaus-print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #mdhaus-print-root .markdown-content {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #mdhaus-print-root .markdown-content a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  #mdhaus-print-root .markdown-content pre,
+  #mdhaus-print-root .markdown-content .table-wrapper,
+  #mdhaus-print-root .markdown-content .overflow-x-auto {
+    overflow: visible !important;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  #mdhaus-print-root .markdown-content h1,
+  #mdhaus-print-root .markdown-content h2,
+  #mdhaus-print-root .markdown-content h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  #mdhaus-print-root .markdown-content pre,
+  #mdhaus-print-root .markdown-content .markdown-table,
+  #mdhaus-print-root .markdown-content img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #mdhaus-print-root .markdown-content pre,
+  #mdhaus-print-root .markdown-content code,
+  #mdhaus-print-root .markdown-content .markdown-table,
+  #mdhaus-print-root .markdown-content .markdown-table__head,
+  #mdhaus-print-root .markdown-content .markdown-table__cell,
+  #mdhaus-print-root .markdown-content .markdown-table tbody tr:nth-child(even) {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

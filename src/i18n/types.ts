@@ -38,6 +38,7 @@ export interface MessageSchema {
     openFile: string;
     save: string;
     saveAs: string;
+    print: string;
     syntax: string;
     syntaxHide: string;
     layout: string;
@@ -97,6 +98,7 @@ export interface MessageSchema {
     openFolder: string;
     save: string;
     saveAs: string;
+    print: string;
     nextFile: string;
     prevFile: string;
     toggleSyntax: string;
@@ -139,6 +141,10 @@ export interface MessageSchema {
     saving: string;
     savedFile: string;
     saveFailed: string;
+    printing: string;
+    printEmpty: string;
+    printed: string;
+    printFailed: string;
     noFilesInWorkspace: string;
     reloadedFromDisk: string;
     keptUnsaved: string;

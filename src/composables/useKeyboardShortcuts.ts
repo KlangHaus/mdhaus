@@ -5,6 +5,7 @@ export interface KeyboardShortcutActions {
   openFolder: () => void;
   saveFile: () => void;
   saveAs: () => void;
+  printDocument: () => void;
   openNextFile: () => void;
   openPreviousFile: () => void;
   toggleSyntax: () => void;
@@ -88,6 +89,12 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions, options: 
     if (key === "s" && !shift && !alt) {
       event.preventDefault();
       actions.saveFile();
+      return;
+    }
+
+    if (key === "p" && !shift && !alt) {
+      event.preventDefault();
+      actions.printDocument();
       return;
     }
 

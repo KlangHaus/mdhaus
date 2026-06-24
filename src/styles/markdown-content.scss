@@ -1,0 +1,54 @@
+// Shared rendered-markdown styles for preview and print.
+// Base typography comes from Grundtone .prose; this covers GFM extensions.
+
+.markdown-content {
+  min-width: 0;
+  color: var(--color-text, #111118);
+
+  ul.contains-task-list {
+    list-style: none;
+    padding-left: 0.25rem;
+  }
+
+  li.task-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .task-list-checkbox {
+    margin-top: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    accent-color: var(--color-primary, #5b4cdb);
+  }
+
+  .markdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--color-border-light, #e4e4ec);
+  }
+
+  .markdown-table__head,
+  .markdown-table__cell {
+    border: 1px solid var(--color-border-light, #e4e4ec);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .markdown-table__head {
+    background: var(--color-surface-alt, #f4f4f8);
+    font-weight: 600;
+  }
+
+  .markdown-table tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--color-surface-alt, #f4f4f8) 55%, transparent);
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
