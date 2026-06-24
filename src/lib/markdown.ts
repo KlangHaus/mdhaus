@@ -1,5 +1,10 @@
 import { Renderer, marked } from "marked";
-import { slugifyHeading } from "./headings";
+import {
+  buildDocumentOutline,
+  injectSectionAnchors,
+  slugifyHeading,
+  stripYamlFrontMatter,
+} from "./headings";
 
 const HEADING_SIZES = ["", "3xl", "2xl", "xl", "lg", "base", "sm"];
 const headingSlugCounts = new Map<string, number>();
@@ -12,11 +17,14 @@ function nextHeadingId(plain: string): string {
 }
 
 const renderer = new Renderer();
+let atxOutlineIndex = 0;
+let atxOutlineIds: string[] = [];
 
 renderer.heading = ({ tokens, depth }) => {
   const text = renderer.parser.parseInline(tokens);
   const plain = text.replace(/<[^>]+>/g, "");
-  const id = nextHeadingId(plain);
+  const id = atxOutlineIds[atxOutlineIndex] ?? nextHeadingId(plain);
+  atxOutlineIndex += 1;
   const size = HEADING_SIZES[depth] ?? "base";
   return `<h${depth} id="${id}" class="font-heading text-${size} font-bold mt-6 mb-3">${text}</h${depth}>`;
 };
@@ -112,6 +120,18 @@ renderer.tablecell = (token) => {
 marked.setOptions({ gfm: true, breaks: true, renderer });
 
 export async function renderMarkdown(markdown: string): Promise<string> {
+  const outline = buildDocumentOutline(markdown);
+  const yamlTitle = outline.find((entry) => entry.kind === "yaml-title");
+  const { body } = stripYamlFrontMatter(markdown);
+  let preparedBody = injectSectionAnchors(body, outline);
+
+  if (yamlTitle) {
+    preparedBody = `<div id="${yamlTitle.id}" class="markdown-section-anchor"></div>\n\n${preparedBody}`;
+  }
+
   headingSlugCounts.clear();
-  return marked.parse(markdown);
+  atxOutlineIds = outline.filter((entry) => entry.kind === "atx").map((entry) => entry.id);
+  atxOutlineIndex = 0;
+
+  return marked.parse(preparedBody);
 }

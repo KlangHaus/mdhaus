@@ -52,7 +52,7 @@ Track planned and completed features. Mark done items with `[x]`.
 ## Preview and writing aids
 
 - [x] Syntax guide sidebar
-- [x] Table of contents in preview (click to scroll)
+- [x] Table of contents in preview (ATX headings, YAML title, and `---` sections)
 - [x] Word count and reading time in toolbar
 - [x] Focus mode (editor only)
 - [x] Pane layout switcher (split / editor / preview)

@@ -51,4 +51,10 @@
     max-width: 100%;
     height: auto;
   }
+
+  .markdown-section-anchor {
+    height: 0;
+    overflow: hidden;
+    scroll-margin-top: 1rem;
+  }
 }
