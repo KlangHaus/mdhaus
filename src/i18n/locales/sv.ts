@@ -55,6 +55,8 @@ const sv: MessageSchema = {
     untitledShort: "Namnlös",
     collapseSidebar: "Dölj filmapp",
     expandSidebar: "Visa filmapp",
+    favourite: "Favorit",
+    favourites: "Favoriter",
     rename: "Byt namn",
     delete: "Ta bort",
     renameTitle: "Byt namn på fil",
@@ -69,6 +71,12 @@ const sv: MessageSchema = {
     deleteDirtyBody: "“{name}” har osparade ändringar. Ta bort ändå?",
     recentFolders: "Senaste mappar",
     recentFiles: "Senaste filer",
+  },
+  git: {
+    statusLabel: "Git-status: {label}",
+    branch: "Branch: {branch}",
+    remote: "Remote: {remote}",
+    openOnGitHub: "Öppna repository på GitHub",
   },
   preview: {
     empty: "Förhandsgranskning visas här medan du skriver…",

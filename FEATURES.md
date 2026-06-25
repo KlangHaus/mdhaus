@@ -29,7 +29,7 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Collapsible files sidebar and preview contents (TOC) sidebar
 - [x] Recent folders list
 - [x] Recent files list
-- [ ] Pinned / favourite files
+- [x] Pinned / favourite files
 - [x] Search file **contents** across workspace
 
 ## Live disk sync
@@ -56,17 +56,17 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Word count and reading time in toolbar
 - [x] Focus mode (editor only)
 - [x] Pane layout switcher (split / editor / preview)
-- [ ] Read-only preview mode
+- [x] Read-only preview mode
 - [ ] Mermaid / diagram support
 - [x] YAML front matter editor (title, tags, date)
-- [ ] Auto-generated document TOC export
+- [x] Auto-generated document TOC export
 
 ## Internationalisation
 
 - [x] Multi-language UI (da, sv, nb, en, de, es)
 - [x] Language switcher (Grundtone `GTOverflowMenu`)
 - [x] Persist language preference
-- [ ] Localised markdown syntax examples in guide
+- [x] Localised markdown syntax examples in guide
 - [ ] RTL language support (future)
 
 ## Theme and appearance
@@ -79,15 +79,15 @@ Track planned and completed features. Mark done items with `[x]`.
 
 - [x] Export current file to HTML
 - [x] Print current document (preview layout via `.prose`, ⌘P)
-- [ ] Export current file to PDF
+- [x] Export current file to PDF
 - [x] Wikilink `[[note]]` compatibility (Obsidian-style)
-- [ ] Respect `.gitignore` when scanning folders
+- [x] Respect `.gitignore` when scanning folders
 
 ## Git integration
 
-- [ ] Git changed-file indicator in tree
+- [x] Git changed-file indicator in tree
 - [ ] Simple diff view (disk vs last saved)
-- [ ] Branch name in status bar (optional)
+- [x] Branch name in status bar (optional)
 
 ## Platform and distribution
 

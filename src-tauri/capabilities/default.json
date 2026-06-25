@@ -10,6 +10,8 @@
     "core:webview:allow-print",
     "dialog:default",
     "opener:default",
+    "allow-read-workspace-git-info",
+    "allow-read-workspace-git-changed-paths",
     "allow-read-markdown-file",
     "allow-write-markdown-file",
     "allow-list-markdown-tree",

@@ -12,11 +12,14 @@ const props = defineProps<{
   activePath: string | null;
   loadingPath: string | null;
   dirtyPaths: Record<string, boolean>;
+  changedPaths: Record<string, boolean>;
+  favouritePaths: Record<string, boolean>;
 }>();
 
 const emit = defineEmits<{
   select: [path: string];
   "file-context": [payload: { path: string; x: number; y: number }];
+  "toggle-favourite": [path: string];
 }>();
 
 const expanded = ref(props.depth < 2);
@@ -38,6 +41,16 @@ function onFileContextMenu(event: MouseEvent) {
 
   event.preventDefault();
   emit("file-context", { path: props.node.path, x: event.clientX, y: event.clientY });
+}
+
+function onToggleFavourite(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (props.node.kind !== "file") {
+    return;
+  }
+
+  emit("toggle-favourite", props.node.path);
 }
 </script>
 
@@ -68,6 +81,16 @@ function onFileContextMenu(event: MouseEvent) {
       @contextmenu="onFileContextMenu"
     >
       <span class="file-tree-node__name">{{ node.name }}</span>
+      <button
+        type="button"
+        class="file-tree-node__favourite"
+        :class="{ 'file-tree-node__favourite--active': favouritePaths[node.path] }"
+        :aria-label="t('files.favourite')"
+        @click="onToggleFavourite"
+      >
+        ★
+      </button>
+      <span v-if="changedPaths[node.path]" class="file-tree-node__changed" aria-label="git changed">●</span>
       <span v-if="dirtyPaths[node.path]" class="file-tree-node__dirty" :aria-label="t('files.unsaved')">•</span>
     </button>
 
@@ -80,8 +103,11 @@ function onFileContextMenu(event: MouseEvent) {
         :active-path="activePath"
         :loading-path="loadingPath"
         :dirty-paths="dirtyPaths"
+        :changed-paths="changedPaths"
+        :favourite-paths="favouritePaths"
         @select="emit('select', $event)"
         @file-context="emit('file-context', $event)"
+        @toggle-favourite="emit('toggle-favourite', $event)"
       />
     </ul>
   </li>
@@ -155,8 +181,30 @@ function onFileContextMenu(event: MouseEvent) {
 }
 
 .file-tree-node__dirty {
-  margin-left: auto;
   color: var(--color-primary, #5b4cdb);
   font-weight: 700;
+}
+
+.file-tree-node__changed {
+  color: #b54708;
+  font-size: 0.7rem;
+}
+
+.file-tree-node__favourite {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #c5c5d5;
+  cursor: pointer;
+  padding: 0 0.1rem;
+  line-height: 1;
+
+  &:hover {
+    color: #f59e0b;
+  }
+}
+
+.file-tree-node__favourite--active {
+  color: #f59e0b;
 }
 </style>

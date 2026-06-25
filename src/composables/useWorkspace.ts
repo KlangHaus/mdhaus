@@ -10,6 +10,7 @@ import type {
   WorkspaceTreeChanged,
 } from "../types/workspace";
 import type { RecentFileEntry } from "../types/recent";
+import type { WorkspaceGitInfo } from "../types/git";
 import { flattenMarkdownFiles, flattenDirectoryPaths, nextUntitledFolderPath, nextUntitledPath } from "../lib/fileTree";
 import {
   forgetRecentFile,
@@ -21,11 +22,18 @@ import {
   renameRecentFile,
 } from "../lib/recentPaths";
 import {
+  loadFavouriteFiles,
+  removeFavouriteFile,
+  replaceFavouriteFilePath,
+  toggleFavouriteFile,
+} from "../lib/favorites";
+import {
   buildHtmlDocument,
   defaultHtmlExportPath,
   ExportHtmlDocumentError,
 } from "../lib/exportHtmlDocument";
 import { PrintDocumentError, printMarkdownDocument } from "../lib/printDocument";
+import { extractHeadings } from "../lib/headings";
 import { APP_NAME } from "../lib/brand";
 
 const MARKDOWN_EXTENSIONS = ["md", "markdown", "mdx", "txt"];
@@ -48,6 +56,44 @@ function isValidFileName(name: string): boolean {
   return !name.includes("/") && !name.includes("\\");
 }
 
+function isValidRelativePath(path: string): boolean {
+  if (path.trim().length === 0) {
+    return false;
+  }
+
+  if (path.startsWith("/") || path.includes("\\")) {
+    return false;
+  }
+
+  const segments = path.split("/");
+  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+}
+
+function defaultTocExportPath(path: string | null): string {
+  if (!path) {
+    return "toc.md";
+  }
+
+  const lastSlash = path.lastIndexOf("/");
+  const lastDot = path.lastIndexOf(".");
+  if (lastDot > lastSlash) {
+    return `${path.slice(0, lastDot)}.toc.md`;
+  }
+
+  return `${path}.toc.md`;
+}
+
+function buildMarkdownToc(source: string): string {
+  const headings = extractHeadings(source);
+  if (headings.length === 0) {
+    return "";
+  }
+
+  return headings
+    .map((heading) => `${"  ".repeat(Math.max(0, heading.level - 1))}- [${heading.text}](#${heading.id})`)
+    .join("\n");
+}
+
 export function useWorkspace() {
   const { t, locale } = useI18n();
 
@@ -65,6 +111,9 @@ export function useWorkspace() {
   const cacheRevision = ref(0);
   const recentFolders = ref(getRecentFolders());
   const recentFiles = ref(getRecentFiles());
+  const workspaceGitInfo = ref<WorkspaceGitInfo | null>(null);
+  const workspaceGitChangedPaths = ref<Record<string, boolean>>({});
+  const favouriteFiles = ref<string[]>(loadFavouriteFiles());
 
   function touchRecentFolder(path: string) {
     recentFolders.value = recordRecentFolder(path);
@@ -187,6 +236,41 @@ export function useWorkspace() {
     }
   }
 
+  async function refreshWorkspaceGitInfo() {
+    if (!workspaceRoot.value) {
+      workspaceGitInfo.value = null;
+      return;
+    }
+
+    try {
+      workspaceGitInfo.value = await invoke<WorkspaceGitInfo | null>("read_workspace_git_info", {
+        workspacePath: workspaceRoot.value,
+      });
+    } catch {
+      workspaceGitInfo.value = null;
+    }
+  }
+
+  async function refreshWorkspaceGitChangedPaths() {
+    if (!workspaceRoot.value) {
+      workspaceGitChangedPaths.value = {};
+      return;
+    }
+
+    try {
+      const changed = await invoke<string[]>("read_workspace_git_changed_paths", {
+        workspacePath: workspaceRoot.value,
+      });
+      workspaceGitChangedPaths.value = Object.fromEntries(changed.map((path) => [path, true]));
+    } catch {
+      workspaceGitChangedPaths.value = {};
+    }
+  }
+
+  async function refreshWorkspaceGitState() {
+    await Promise.all([refreshWorkspaceGitInfo(), refreshWorkspaceGitChangedPaths()]);
+  }
+
   async function refreshWorkspaceTree() {
     if (!workspaceRoot.value) {
       return;
@@ -195,6 +279,7 @@ export function useWorkspace() {
     try {
       const tree = await invoke<FileTreeNode[]>("list_markdown_tree", { root: workspaceRoot.value });
       fileTree.value = tree;
+      await refreshWorkspaceGitState();
     } catch (error) {
       status.value = t("status.treeRefreshFailed", { error: String(error) });
     }
@@ -208,6 +293,7 @@ export function useWorkspace() {
       fileTree.value = tree;
       await startWorkspaceWatch(root);
       touchRecentFolder(root);
+      await refreshWorkspaceGitState();
       status.value = t("status.openedFolder", { name: basename(root) });
     } catch (error) {
       status.value = t("status.folderScanFailed", { error: String(error) });
@@ -461,6 +547,7 @@ export function useWorkspace() {
       touchRecentFile(saved.path);
       await invoke("notify_file_saved", { path: saved.path });
       status.value = t("status.savedFile", { name: basename(saved.path) });
+      await refreshWorkspaceGitChangedPaths();
     } catch (error) {
       status.value = t("status.saveFailed", { error: String(error) });
     }
@@ -526,15 +613,25 @@ export function useWorkspace() {
     }
   }
 
-  async function renameFile(from: string, newName: string) {
-    const trimmed = newName.trim();
-    if (!isValidFileName(trimmed)) {
+  async function renameFile(from: string, newPath: string) {
+    const trimmed = newPath.trim();
+    if (!isValidRelativePath(trimmed)) {
       status.value = t("status.invalidFileName");
       return;
     }
 
-    const parent = dirname(from);
-    const to = parent ? `${parent}/${trimmed}` : trimmed;
+    let to = "";
+    if (trimmed.includes("/")) {
+      if (!workspaceRoot.value) {
+        status.value = t("status.invalidFileName");
+        return;
+      }
+      to = `${workspaceRoot.value}/${trimmed}`;
+    } else {
+      const parent = dirname(from);
+      to = parent ? `${parent}/${trimmed}` : trimmed;
+    }
+
     if (to === from) {
       return;
     }
@@ -544,6 +641,7 @@ export function useWorkspace() {
       const renamedPath = await invoke<string>("rename_markdown_path", { from, to });
       migrateFilePath(from, renamedPath);
       recentFiles.value = renameRecentFile(from, renamedPath);
+      favouriteFiles.value = replaceFavouriteFilePath(from, renamedPath);
       await refreshWorkspaceTree();
       status.value = t("status.renamedFile", { name: basename(renamedPath) });
     } catch (error) {
@@ -585,6 +683,7 @@ export function useWorkspace() {
       bumpCacheRevision();
       clearDirty(path);
       recentFiles.value = forgetRecentFile(path);
+      favouriteFiles.value = removeFavouriteFile(path);
 
       if (filePath.value === path) {
         const remaining = workspaceFiles.value.filter((candidate) => candidate !== path);
@@ -674,7 +773,56 @@ export function useWorkspace() {
     }
   }
 
+  async function exportCurrentDocumentToPdf() {
+    if (content.value.trim().length === 0) {
+      status.value = t("status.printEmpty");
+      return;
+    }
+
+    status.value = t("status.printing");
+    try {
+      await printCurrentDocument();
+      status.value = "PDF: brug printdialogens 'Gem som PDF'.";
+    } catch (error) {
+      status.value = t("status.printFailed", { error: String(error) });
+    }
+  }
+
+  async function exportDocumentToc() {
+    const toc = buildMarkdownToc(content.value);
+    if (toc.length === 0) {
+      status.value = "Ingen overskrifter at eksportere.";
+      return;
+    }
+
+    const selected = await save({
+      filters: [
+        { name: "Markdown", extensions: ["md"] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+      defaultPath: defaultTocExportPath(filePath.value),
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    try {
+      await invoke<MarkdownDocument>("write_markdown_file", {
+        path: selected,
+        content: `${toc}\n`,
+      });
+      status.value = `Eksporterede TOC til ${basename(selected)}.`;
+    } catch (error) {
+      status.value = `TOC-eksport mislykkedes: ${String(error)}`;
+    }
+  }
+
   let unlisteners: UnlistenFn[] = [];
+
+  function toggleFavourite(path: string) {
+    favouriteFiles.value = toggleFavouriteFile(path);
+  }
 
   onMounted(async () => {
     unlisteners = await Promise.all([
@@ -686,6 +834,8 @@ export function useWorkspace() {
       listen("menu-save-as", () => saveFile(true)),
       listen("menu-print", () => printCurrentDocument()),
       listen("menu-export-html", () => exportCurrentDocumentToHtml()),
+      listen("menu-export-pdf", () => exportCurrentDocumentToPdf()),
+      listen("menu-export-toc", () => exportDocumentToc()),
       listen("workspace-file-changed", (event) =>
         handleWorkspaceFileChanged(event.payload as WorkspaceFileChanged),
       ),
@@ -727,6 +877,8 @@ export function useWorkspace() {
     openNextFile,
     openPreviousFile,
     exportCurrentDocumentToHtml,
+    exportCurrentDocumentToPdf,
+    exportDocumentToc,
     printCurrentDocument,
     recentFiles,
     recentFolders,
@@ -737,6 +889,10 @@ export function useWorkspace() {
     status,
     title,
     workspaceFiles,
+    workspaceGitChangedPaths,
+    workspaceGitInfo,
+    favouriteFiles,
+    toggleFavourite,
     workspaceLabel,
     workspaceRoot,
   };

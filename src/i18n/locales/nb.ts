@@ -55,6 +55,8 @@ const nb: MessageSchema = {
     untitledShort: "Uten tittel",
     collapseSidebar: "Skjul filpanel",
     expandSidebar: "Vis filpanel",
+    favourite: "Favoritt",
+    favourites: "Favoritter",
     rename: "Gi nytt navn",
     delete: "Slett",
     renameTitle: "Gi nytt navn",
@@ -69,6 +71,12 @@ const nb: MessageSchema = {
     deleteDirtyBody: "“{name}” har ulagrede endringer. Slette likevel?",
     recentFolders: "Nylige mapper",
     recentFiles: "Nylige filer",
+  },
+  git: {
+    statusLabel: "Git-status: {label}",
+    branch: "Branch: {branch}",
+    remote: "Remote: {remote}",
+    openOnGitHub: "Åpne repository på GitHub",
   },
   preview: {
     empty: "Forhåndsvisning vises her mens du skriver…",

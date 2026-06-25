@@ -11,9 +11,11 @@ import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
 
 const { fontSize } = useEditorFontSize();
 const themeCompartment = new Compartment();
+const editabilityCompartment = new Compartment();
 
 const props = defineProps<{
   modelValue: string;
+  readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -79,6 +81,10 @@ onMounted(() => {
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
+        editabilityCompartment.of([
+          EditorState.readOnly.of(!!props.readonly),
+          EditorView.editable.of(!props.readonly),
+        ]),
         themeCompartment.of(createEditorTheme(fontSize.value)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -119,6 +125,22 @@ watch(fontSize, (size) => {
     effects: themeCompartment.reconfigure(createEditorTheme(size)),
   });
 });
+
+watch(
+  () => props.readonly,
+  (readonly) => {
+    if (!view) {
+      return;
+    }
+
+    view.dispatch({
+      effects: editabilityCompartment.reconfigure([
+        EditorState.readOnly.of(!!readonly),
+        EditorView.editable.of(!readonly),
+      ]),
+    });
+  },
+);
 
 onBeforeUnmount(() => {
   scrollCleanup?.();

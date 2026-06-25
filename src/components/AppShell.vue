@@ -2,13 +2,14 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { GTButton } from "@grundtone/vue";
+import { GTButton, GTOverflowMenu, type OverflowMenuItem } from "@grundtone/vue";
 import ExternalChangeModal from "./ExternalChangeModal.vue";
 import FileTreeSidebar from "./FileTreeSidebar.vue";
 import FrontMatterSidebar from "./FrontMatterSidebar.vue";
 import InstructionsModal from "./InstructionsModal.vue";
 import LayoutSwitcher from "./LayoutSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
+import GitStatusBadge from "./GitStatusBadge.vue";
 import ThemeSwitcher from "./ThemeSwitcher.vue";
 import EditorFontSizeControl from "./EditorFontSizeControl.vue";
 import MarkdownEditor from "./MarkdownEditor.vue";
@@ -51,6 +52,8 @@ const {
   openNextFile,
   openPreviousFile,
   exportCurrentDocumentToHtml,
+  exportCurrentDocumentToPdf,
+  exportDocumentToc,
   printCurrentDocument,
   recentFiles,
   recentFolders,
@@ -63,6 +66,10 @@ const {
   workspaceLabel,
   workspaceRoot,
   workspaceFiles,
+  workspaceGitChangedPaths,
+  workspaceGitInfo,
+  favouriteFiles,
+  toggleFavourite,
 } = useWorkspace();
 
 const syntaxOpen = ref(false);
@@ -76,6 +83,7 @@ const createFolderOpen = ref(false);
 const createFolderDefaultName = ref("untitled-folder");
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
 const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null);
+const previewReadOnly = ref(false);
 
 watch(paneLayout, (value) => {
   savePaneLayout(value);
@@ -90,8 +98,21 @@ function basename(filePath: string): string {
   return parts[parts.length - 1] ?? filePath;
 }
 
+function workspaceRelativePath(path: string): string {
+  if (!workspaceRoot.value) {
+    return basename(path);
+  }
+
+  const prefix = `${workspaceRoot.value}/`;
+  if (path.startsWith(prefix)) {
+    return path.slice(prefix.length);
+  }
+
+  return basename(path);
+}
+
 function onRenameRequest(path: string) {
-  renameTarget.value = { path, name: basename(path) };
+  renameTarget.value = { path, name: workspaceRelativePath(path) };
 }
 
 async function onRenameConfirm(newName: string) {
@@ -232,6 +253,44 @@ function openShortcutsFromInstructions() {
   instructionsOpen.value = false;
   shortcutsOpen.value = true;
 }
+
+function togglePreviewReadOnly() {
+  previewReadOnly.value = !previewReadOnly.value;
+  if (previewReadOnly.value && paneLayout.value !== "preview") {
+    paneLayout.value = "preview";
+  }
+}
+
+const moreActions = computed(() => [
+  { label: t("toolbar.saveAs"), value: "saveAs" },
+  { label: t("toolbar.print"), value: "print" },
+  { label: t("toolbar.exportHtml"), value: "exportHtml" },
+  { label: "Eksporter PDF", value: "exportPdf" },
+  { label: "Eksporter TOC", value: "exportToc" },
+  { label: previewReadOnly.value ? "Slå læsetilstand fra" : "Læsetilstand", value: "toggleReadOnly" },
+  { label: t("toolbar.instructions"), value: "instructions" },
+  { label: t("toolbar.shortcuts"), value: "shortcuts" },
+]);
+
+function onMoreActionSelect(item: OverflowMenuItem) {
+  if (item.value === "saveAs") {
+    void saveFile(true);
+  } else if (item.value === "print") {
+    void printCurrentDocument();
+  } else if (item.value === "exportHtml") {
+    void exportCurrentDocumentToHtml();
+  } else if (item.value === "exportPdf") {
+    void exportCurrentDocumentToPdf();
+  } else if (item.value === "exportToc") {
+    void exportDocumentToc();
+  } else if (item.value === "toggleReadOnly") {
+    togglePreviewReadOnly();
+  } else if (item.value === "instructions") {
+    instructionsOpen.value = true;
+  } else if (item.value === "shortcuts") {
+    shortcutsOpen.value = true;
+  }
+}
 </script>
 
 <template>
@@ -240,9 +299,8 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="secondary" @click="openFolder">{{ t("toolbar.openFolder") }}</GTButton>
       <GTButton size="sm" variant="secondary" @click="openFile">{{ t("toolbar.openFile") }}</GTButton>
       <GTButton size="sm" variant="primary" @click="saveFile(false)">{{ t("toolbar.save") }}</GTButton>
-      <GTButton size="sm" variant="outlined" @click="saveFile(true)">{{ t("toolbar.saveAs") }}</GTButton>
-      <GTButton size="sm" variant="outlined" @click="printCurrentDocument">{{ t("toolbar.print") }}</GTButton>
-      <GTButton size="sm" variant="outlined" @click="exportCurrentDocumentToHtml">{{ t("toolbar.exportHtml") }}</GTButton>
+
+      <div class="toolbar__divider" aria-hidden="true" />
       <LayoutSwitcher v-model:layout="paneLayout" />
       <GTButton size="sm" variant="outlined" @click="frontMatterOpen = !frontMatterOpen">
         {{ frontMatterOpen ? t("toolbar.metadataHide") : t("toolbar.metadata") }}
@@ -250,17 +308,22 @@ function openShortcutsFromInstructions() {
       <GTButton size="sm" variant="outlined" @click="syntaxOpen = !syntaxOpen">
         {{ syntaxOpen ? t("toolbar.syntaxHide") : t("toolbar.syntax") }}
       </GTButton>
-      <GTButton size="sm" variant="outlined" @click="instructionsOpen = true">{{ t("toolbar.instructions") }}</GTButton>
-      <GTButton size="sm" variant="outlined" @click="shortcutsOpen = true">{{ t("toolbar.shortcuts") }}</GTButton>
+
+      <div class="toolbar__divider" aria-hidden="true" />
       <LanguageSwitcher />
       <EditorFontSizeControl />
       <ThemeSwitcher />
-      <span class="toolbar__path text-secondary text-sm truncate">
-        {{ filePath ?? t("toolbar.untitled") }}
-      </span>
-      <span v-if="dirty" class="toolbar__dirty text-primary text-sm">{{ t("toolbar.unsaved") }}</span>
-      <span class="toolbar__stats text-secondary text-sm">{{ documentStatsLabel }}</span>
-      <span class="toolbar__status text-secondary text-sm ml-auto">{{ status }}</span>
+
+      <GTOverflowMenu
+        class="toolbar__more"
+        label="⋯"
+        align="right"
+        :items="moreActions"
+        aria-label="Flere handlinger"
+        @select="onMoreActionSelect"
+      />
+
+      <GitStatusBadge :info="workspaceGitInfo" />
     </header>
 
     <main class="app-shell__main flex-1">
@@ -274,6 +337,7 @@ function openShortcutsFromInstructions() {
               <MarkdownEditor
                 ref="editorRef"
                 :model-value="content"
+                :readonly="previewReadOnly"
                 @update:model-value="setContent"
                 @scroll="onEditorScroll"
               />
@@ -306,6 +370,8 @@ function openShortcutsFromInstructions() {
           :active-path="filePath"
           :loading-path="loadingPath"
           :dirty-paths="dirtyPathMap"
+          :changed-paths="workspaceGitChangedPaths"
+          :favourite-paths="Object.fromEntries(favouriteFiles.map((path) => [path, true]))"
           :has-workspace="hasWorkspace"
           :recent-folders="recentFolders"
           :recent-files="recentFiles"
@@ -319,6 +385,7 @@ function openShortcutsFromInstructions() {
           @select="openFileFromTree"
           @rename="onRenameRequest"
           @delete="deleteFile"
+          @toggle-favourite="toggleFavourite"
         />
       </div>
     </main>
@@ -341,6 +408,13 @@ function openShortcutsFromInstructions() {
       @close="onCreateFolderClose"
       @confirm="onCreateFolderConfirm"
     />
+
+    <footer class="statusbar border-t bg-surface-raised px-4 py-1.5 text-sm">
+      <span class="statusbar__path text-secondary truncate">{{ filePath ?? t("toolbar.untitled") }}</span>
+      <span v-if="dirty" class="statusbar__dirty text-primary">{{ t("toolbar.unsaved") }}</span>
+      <span class="statusbar__stats text-secondary">{{ documentStatsLabel }}</span>
+      <span class="statusbar__status text-secondary ml-auto">{{ status }}</span>
+    </footer>
   </div>
 </template>
 
@@ -355,10 +429,29 @@ function openShortcutsFromInstructions() {
   min-height: 48px;
   border-color: var(--color-border-light, #e4e4ec);
   flex-wrap: wrap;
+  align-content: center;
 }
 
-.toolbar__path {
-  max-width: 18%;
+.toolbar__divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--color-border-light, #e4e4ec);
+  flex: 0 0 auto;
+}
+
+.toolbar__more {
+  flex: 0 0 auto;
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-color: var(--color-border-light, #e4e4ec);
+}
+
+.statusbar__path {
+  max-width: 40%;
 }
 
 .app-shell__main {

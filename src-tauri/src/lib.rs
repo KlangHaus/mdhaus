@@ -1,4 +1,6 @@
+mod git_info;
 mod watcher;
+mod workspace_scan;
 
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -7,7 +9,9 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter, Manager,
 };
+use git_info::{get_workspace_git_changed_paths, get_workspace_git_info, WorkspaceGitInfo};
 use watcher::{notify_file_saved, start_workspace_watch, stop_workspace_watch, WatcherState};
+use workspace_scan::{build_markdown_tree, collect_markdown_file_paths};
 
 #[derive(Serialize)]
 struct MarkdownDocument {
@@ -43,97 +47,6 @@ fn write_markdown_file(path: String, content: String) -> Result<MarkdownDocument
     Ok(MarkdownDocument { path, content })
 }
 
-fn is_markdown_file(path: &Path) -> bool {
-    matches!(
-        path.extension()
-            .and_then(|value| value.to_str())
-            .map(str::to_ascii_lowercase)
-            .as_deref(),
-        Some("md") | Some("markdown") | Some("mdx") | Some("txt")
-    )
-}
-
-fn should_skip_dir(name: &str) -> bool {
-    matches!(
-        name,
-        ".git" | ".idea" | ".vscode" | ".turbo" | ".pnpm-store" | "node_modules" | "target" | "dist" | "src-tauri"
-    )
-}
-
-fn build_markdown_tree(dir: &Path) -> Result<Vec<FileTreeNode>, String> {
-    let mut entries = std::fs::read_dir(dir)
-        .map_err(|error| error.to_string())?
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-
-    entries.sort_by_key(|entry| entry.file_name());
-
-    let mut nodes = Vec::new();
-
-    for entry in entries {
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-        let file_type = entry.file_type().map_err(|error| error.to_string())?;
-
-        if file_type.is_dir() {
-            if should_skip_dir(&name) {
-                continue;
-            }
-
-            let children = build_markdown_tree(&path)?;
-
-            nodes.push(FileTreeNode {
-                name,
-                path: path.to_string_lossy().to_string(),
-                kind: "dir".to_string(),
-                children,
-            });
-            continue;
-        }
-
-        if file_type.is_file() && is_markdown_file(&path) {
-            nodes.push(FileTreeNode {
-                name,
-                path: path.to_string_lossy().to_string(),
-                kind: "file".to_string(),
-                children: Vec::new(),
-            });
-        }
-    }
-
-    Ok(nodes)
-}
-
-fn collect_markdown_file_paths(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    let mut entries = std::fs::read_dir(dir)
-        .map_err(|error| error.to_string())?
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-
-    entries.sort_by_key(|entry| entry.file_name());
-
-    for entry in entries {
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-        let file_type = entry.file_type().map_err(|error| error.to_string())?;
-
-        if file_type.is_dir() {
-            if should_skip_dir(&name) {
-                continue;
-            }
-
-            collect_markdown_file_paths(&path, files)?;
-            continue;
-        }
-
-        if file_type.is_file() && is_markdown_file(&path) {
-            files.push(path);
-        }
-    }
-
-    Ok(())
-}
-
 /// Search markdown file contents under a workspace root (case-insensitive substring).
 #[tauri::command]
 fn search_markdown_content(root: String, query: String) -> Result<Vec<String>, String> {
@@ -147,8 +60,7 @@ fn search_markdown_content(root: String, query: String) -> Result<Vec<String>, S
         return Err("Selected path is not a directory.".to_string());
     }
 
-    let mut files = Vec::new();
-    collect_markdown_file_paths(&root_path, &mut files)?;
+    let files = collect_markdown_file_paths(&root_path)?;
 
     let mut matches = Vec::new();
     for path in files {
@@ -217,6 +129,17 @@ fn list_markdown_tree(root: String) -> Result<Vec<FileTreeNode>, String> {
     build_markdown_tree(&path)
 }
 
+/// Read git repository and branch metadata for an open workspace folder.
+#[tauri::command]
+fn read_workspace_git_info(workspace_path: String) -> Result<Option<WorkspaceGitInfo>, String> {
+    get_workspace_git_info(&workspace_path)
+}
+
+#[tauri::command]
+fn read_workspace_git_changed_paths(workspace_path: String) -> Result<Vec<String>, String> {
+    get_workspace_git_changed_paths(&workspace_path)
+}
+
 fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let open_item = MenuItem::with_id(app, "open", "Open…", true, Some("CmdOrCtrl+O"))?;
     let open_folder_item =
@@ -227,6 +150,10 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let print_item = MenuItem::with_id(app, "print", "Print…", true, Some("CmdOrCtrl+P"))?;
     let export_html_item =
         MenuItem::with_id(app, "export_html", "Export HTML…", true, None::<&str>)?;
+    let export_pdf_item =
+        MenuItem::with_id(app, "export_pdf", "Export PDF…", true, None::<&str>)?;
+    let export_toc_item =
+        MenuItem::with_id(app, "export_toc", "Export TOC…", true, None::<&str>)?;
 
     let prev_file_item =
         MenuItem::with_id(app, "prev_file", "Previous File", true, Some("Alt+CmdOrCtrl+Up"))?;
@@ -248,6 +175,8 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &save_as_item,
             &print_item,
             &export_html_item,
+            &export_pdf_item,
+            &export_toc_item,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::close_window(app, None)?,
         ],
@@ -343,6 +272,8 @@ pub fn run() {
             delete_markdown_path,
             list_markdown_tree,
             search_markdown_content,
+            read_workspace_git_info,
+            read_workspace_git_changed_paths,
             start_workspace_watch,
             stop_workspace_watch,
             notify_file_saved,
@@ -368,6 +299,8 @@ pub fn run() {
                     "save_as" => Some("menu-save-as"),
                     "print" => Some("menu-print"),
                     "export_html" => Some("menu-export-html"),
+                    "export_pdf" => Some("menu-export-pdf"),
+                    "export_toc" => Some("menu-export-toc"),
                     _ => None,
                 };
 

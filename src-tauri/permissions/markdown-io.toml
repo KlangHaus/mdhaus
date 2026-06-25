@@ -1,4 +1,14 @@
 [[permission]]
+identifier = "allow-read-workspace-git-info"
+description = "Enables the read_workspace_git_info command."
+commands.allow = ["read_workspace_git_info"]
+
+[[permission]]
+identifier = "allow-read-workspace-git-changed-paths"
+description = "Enables the read_workspace_git_changed_paths command."
+commands.allow = ["read_workspace_git_changed_paths"]
+
+[[permission]]
 identifier = "allow-read-markdown-file"
 description = "Enables the read_markdown_file command."
 commands.allow = ["read_markdown_file"]

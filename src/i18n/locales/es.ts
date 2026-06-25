@@ -55,6 +55,8 @@ const es: MessageSchema = {
     untitledShort: "Sin título",
     collapseSidebar: "Ocultar panel de archivos",
     expandSidebar: "Mostrar panel de archivos",
+    favourite: "Favorito",
+    favourites: "Favoritos",
     rename: "Renombrar",
     delete: "Eliminar",
     renameTitle: "Renombrar archivo",
@@ -69,6 +71,12 @@ const es: MessageSchema = {
     deleteDirtyBody: "“{name}” tiene cambios sin guardar. ¿Eliminar de todos modos?",
     recentFolders: "Carpetas recientes",
     recentFiles: "Archivos recientes",
+  },
+  git: {
+    statusLabel: "Estado de Git: {label}",
+    branch: "Rama: {branch}",
+    remote: "Remoto: {remote}",
+    openOnGitHub: "Abrir repositorio en GitHub",
   },
   preview: {
     empty: "La vista previa aparece aquí mientras escribes…",

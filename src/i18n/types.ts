@@ -69,6 +69,8 @@ export interface MessageSchema {
     untitledShort: string;
     collapseSidebar: string;
     expandSidebar: string;
+    favourite: string;
+    favourites: string;
     rename: string;
     delete: string;
     renameTitle: string;
@@ -83,6 +85,12 @@ export interface MessageSchema {
     deleteDirtyBody: string;
     recentFolders: string;
     recentFiles: string;
+  };
+  git: {
+    statusLabel: string;
+    branch: string;
+    remote: string;
+    openOnGitHub: string;
   };
   preview: {
     empty: string;

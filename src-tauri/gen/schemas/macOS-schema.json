@@ -369,6 +369,18 @@
           "markdownDescription": "Enables the read_markdown_file command."
         },
         {
+          "description": "Enables the read_workspace_git_changed_paths command.",
+          "type": "string",
+          "const": "allow-read-workspace-git-changed-paths",
+          "markdownDescription": "Enables the read_workspace_git_changed_paths command."
+        },
+        {
+          "description": "Enables the read_workspace_git_info command.",
+          "type": "string",
+          "const": "allow-read-workspace-git-info",
+          "markdownDescription": "Enables the read_workspace_git_info command."
+        },
+        {
           "description": "Enables the rename_markdown_path command.",
           "type": "string",
           "const": "allow-rename-markdown-path",

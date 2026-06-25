@@ -55,6 +55,8 @@ const de: MessageSchema = {
     untitledShort: "Unbenannt",
     collapseSidebar: "Dateileiste einklappen",
     expandSidebar: "Dateileiste ausklappen",
+    favourite: "Favorit",
+    favourites: "Favoriten",
     rename: "Umbenennen",
     delete: "Löschen",
     renameTitle: "Datei umbenennen",
@@ -69,6 +71,12 @@ const de: MessageSchema = {
     deleteDirtyBody: "“{name}” hat ungespeicherte Änderungen. Trotzdem löschen?",
     recentFolders: "Zuletzt geöffnete Ordner",
     recentFiles: "Zuletzt geöffnete Dateien",
+  },
+  git: {
+    statusLabel: "Git-Status: {label}",
+    branch: "Branch: {branch}",
+    remote: "Remote: {remote}",
+    openOnGitHub: "Repository auf GitHub öffnen",
   },
   preview: {
     empty: "Die Vorschau erscheint hier, während du schreibst…",

@@ -9,6 +9,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  favorite: [];
   rename: [];
   delete: [];
   close: [];
@@ -49,6 +50,9 @@ onBeforeUnmount(() => {
       role="menu"
       :style="{ top: `${y}px`, left: `${x}px` }"
     >
+      <button type="button" class="file-context-menu__item" role="menuitem" @click="emit('favorite')">
+        {{ t("files.favourite") }}
+      </button>
       <button type="button" class="file-context-menu__item" role="menuitem" @click="emit('rename')">
         {{ t("files.rename") }}
       </button>

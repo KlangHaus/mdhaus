@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useI18n } from "../i18n/useI18n";
+
 withDefaults(
   defineProps<{
     showHeader?: boolean;
@@ -13,66 +16,53 @@ export interface MarkdownGuideItem {
   syntax: string;
 }
 
-const items: MarkdownGuideItem[] = [
-  {
-    title: "Overskrifter",
-    description: "Brug # til overskrifter. Flere # giver mindre overskrift.",
-    syntax: "# Overskrift 1\n## Overskrift 2\n### Overskrift 3",
-  },
-  {
-    title: "Fed og kursiv",
-    description: "Fremhæv tekst med fed, kursiv eller begge dele.",
-    syntax: "**fed tekst**\n*kursiv tekst*\n***fed og kursiv***",
-  },
-  {
-    title: "Lister",
-    description: "Punktlister med - eller *. Nummererede med tal og punktum.",
-    syntax: "- Punkt ét\n- Punkt to\n  - Underpunkt\n\n1. Første\n2. Anden",
-  },
-  {
-    title: "Links",
-    description: "Link til websider eller filer med visningstekst i klammer.",
-    syntax: "[Grundtone](https://grundtone.com)\n[Relativ sti](./docs/README.md)",
-  },
-  {
-    title: "Billeder",
-    description: "Samme syntaks som links, men med udråbstegn foran.",
-    syntax: "![Alternativ tekst](./billede.png)",
-  },
-  {
-    title: "Kode",
-    description: "Inline kode med backticks. Kodeblok med tre backticks.",
-    syntax: "Brug `npm install` i terminalen.\n\n```rust\nfn main() {\n    println!(\"Hej\");\n}\n```",
-  },
-  {
-    title: "Citat",
-    description: "Citer tekst med > i starten af linjen.",
-    syntax: "> Dette er et citat.\n> Det kan gå over flere linjer.",
-  },
-  {
-    title: "Tabel",
-    description: "Kolonner adskilles med |. Header-rækken følges af en separator.",
-    syntax: "| Kolonne | Værdi |\n| ------- | ----- |\n| Navn    | open mdHaus |",
-  },
-  {
-    title: "Vandret linje",
-    description: "Adskil sektioner med tre bindestreger på en linje.",
-    syntax: "---",
-  },
-  {
-    title: "Opgaveliste",
-    description: "Markdown-opgaver med - [ ] og - [x].",
-    syntax: "- [ ] Todo\n- [x] Færdig",
-  },
-];
+const { locale } = useI18n();
+
+const guideByLocale: Record<string, MarkdownGuideItem[]> = {
+  da: [
+    { title: "Overskrifter", description: "Brug # til overskrifter.", syntax: "# Overskrift 1\n## Overskrift 2" },
+    { title: "Fed og kursiv", description: "Fremhæv tekst med markdown.", syntax: "**fed**\n*kursiv*" },
+    { title: "Lister", description: "Brug - eller 1. til lister.", syntax: "- Punkt\n- Underpunkt" },
+  ],
+  en: [
+    { title: "Headings", description: "Use # markers for heading levels.", syntax: "# Heading 1\n## Heading 2" },
+    { title: "Bold and italic", description: "Emphasize text with markdown.", syntax: "**bold**\n*italic*" },
+    { title: "Lists", description: "Use - or 1. for list items.", syntax: "- Item\n- Sub item" },
+  ],
+  de: [
+    { title: "Überschriften", description: "Nutze # für Überschriften.", syntax: "# Überschrift 1\n## Überschrift 2" },
+    { title: "Fett und kursiv", description: "Text mit Markdown hervorheben.", syntax: "**fett**\n*kursiv*" },
+    { title: "Listen", description: "Nutze - oder 1. für Listen.", syntax: "- Punkt\n- Unterpunkt" },
+  ],
+  es: [
+    { title: "Encabezados", description: "Usa # para encabezados.", syntax: "# Encabezado 1\n## Encabezado 2" },
+    { title: "Negrita y cursiva", description: "Resalta texto con markdown.", syntax: "**negrita**\n*cursiva*" },
+    { title: "Listas", description: "Usa - o 1. para listas.", syntax: "- Elemento\n- Sub elemento" },
+  ],
+  nb: [
+    { title: "Overskrifter", description: "Bruk # for overskrifter.", syntax: "# Overskrift 1\n## Overskrift 2" },
+    { title: "Fet og kursiv", description: "Marker tekst med markdown.", syntax: "**fet**\n*kursiv*" },
+    { title: "Lister", description: "Bruk - eller 1. for lister.", syntax: "- Punkt\n- Underpunkt" },
+  ],
+  sv: [
+    { title: "Rubriker", description: "Använd # för rubriker.", syntax: "# Rubrik 1\n## Rubrik 2" },
+    { title: "Fet och kursiv", description: "Framhäv text med markdown.", syntax: "**fet**\n*kursiv*" },
+    { title: "Listor", description: "Använd - eller 1. för listor.", syntax: "- Punkt\n- Delpunkt" },
+  ],
+};
+
+const items = computed(() => {
+  const currentLocale = locale.value ?? "en";
+  return guideByLocale[currentLocale] ?? guideByLocale.en;
+});
 </script>
 
 <template>
   <section class="markdown-guide">
     <header v-if="showHeader" class="markdown-guide__header">
-      <h2 class="markdown-guide__title">Markdown-syntaks</h2>
+      <h2 class="markdown-guide__title">Markdown</h2>
       <p class="markdown-guide__intro text-secondary">
-        Hurtig reference til de mest brugte elementer. Kopiér eksemplerne ind i editoren til venstre.
+        Localized quick reference.
       </p>
     </header>
 

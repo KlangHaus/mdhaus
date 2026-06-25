@@ -23,6 +23,7 @@ const emit = defineEmits<{
   select: [path: string];
   rename: [path: string];
   delete: [path: string];
+  "toggle-favourite": [path: string];
 }>();
 
 const props = defineProps<{
@@ -32,6 +33,8 @@ const props = defineProps<{
   activePath: string | null;
   loadingPath: string | null;
   dirtyPaths: Record<string, boolean>;
+  changedPaths: Record<string, boolean>;
+  favouritePaths: Record<string, boolean>;
   hasWorkspace: boolean;
   recentFolders: string[];
   recentFiles: RecentFileEntry[];
@@ -61,6 +64,15 @@ function onContextRename() {
   closeContextMenu();
 }
 
+function onContextFavourite() {
+  if (!contextMenu.value) {
+    return;
+  }
+
+  emit("toggle-favourite", contextMenu.value.path);
+  closeContextMenu();
+}
+
 function onContextDelete() {
   if (!contextMenu.value) {
     return;
@@ -78,6 +90,33 @@ const visibleTree = computed(() =>
 );
 
 const showRecentSections = computed(() => searchQuery.value.trim().length < 2);
+const favouriteEntries = computed(() => {
+  const result: Array<{ path: string; name: string }> = [];
+  const seen = new Set<string>();
+
+  for (const path of flattenTreePaths(props.fileTree)) {
+    if (!props.favouritePaths[path] || seen.has(path)) {
+      continue;
+    }
+
+    result.push({ path, name: basename(path) });
+    seen.add(path);
+  }
+
+  return result;
+});
+
+function flattenTreePaths(nodes: FileTreeNode[]): string[] {
+  const result: string[] = [];
+  for (const node of nodes) {
+    if (node.kind === "file") {
+      result.push(node.path);
+    } else {
+      result.push(...flattenTreePaths(node.children));
+    }
+  }
+  return result;
+}
 
 async function runContentSearch(query: string) {
   const needle = query.trim().toLowerCase();
@@ -219,6 +258,28 @@ watch(
 
     <div class="file-sidebar__body flex-1 min-h-0 overflow-auto p-2">
       <section
+        v-if="showRecentSections && favouriteEntries.length > 0"
+        class="file-sidebar__recent"
+        :aria-label="t('files.favourites')"
+      >
+        <h3 class="file-sidebar__recent-title">{{ t("files.favourites") }}</h3>
+        <ul class="file-sidebar__recent-list">
+          <li v-for="entry in favouriteEntries" :key="entry.path">
+            <button
+              type="button"
+              class="file-sidebar__recent-item"
+              :class="{ 'file-sidebar__recent-item--active': entry.path === activePath }"
+              :title="entry.path"
+              @click="emit('select', entry.path)"
+            >
+              <span class="file-sidebar__recent-name">★ {{ entry.name }}</span>
+              <span class="file-sidebar__recent-meta">{{ entry.path }}</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section
         v-if="showRecentSections && !hasWorkspace && recentFolders.length > 0"
         class="file-sidebar__recent"
         :aria-label="t('files.recentFolders')"
@@ -278,8 +339,11 @@ watch(
           :active-path="activePath"
           :loading-path="loadingPath"
           :dirty-paths="dirtyPaths"
+          :changed-paths="changedPaths"
+          :favourite-paths="favouritePaths"
           @select="emit('select', $event)"
           @file-context="onFileContext"
+          @toggle-favourite="emit('toggle-favourite', $event)"
         />
       </ul>
     </div>
@@ -290,6 +354,7 @@ watch(
       :x="contextMenu?.x ?? 0"
       :y="contextMenu?.y ?? 0"
       @close="closeContextMenu"
+      @favorite="onContextFavourite"
       @rename="onContextRename"
       @delete="onContextDelete"
     />
