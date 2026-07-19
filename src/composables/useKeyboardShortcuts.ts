@@ -9,6 +9,8 @@ export interface KeyboardShortcutActions {
   openNextFile: () => void;
   openPreviousFile: () => void;
   toggleSyntax: () => void;
+  toggleFocusMode?: () => void;
+  openFind?: () => void;
   showShortcuts: () => void;
   closeOverlay: () => void;
 }
@@ -18,6 +20,9 @@ export interface KeyboardShortcutOptions {
   frontMatterOpen: Ref<boolean>;
   shortcutsOpen: Ref<boolean>;
   instructionsOpen: Ref<boolean>;
+  focusMode?: Ref<boolean>;
+  diffOpen?: Ref<boolean>;
+  commitOpen?: Ref<boolean>;
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -39,6 +44,24 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions, options: 
     const key = event.key.toLowerCase();
 
     if (event.key === "Escape") {
+      if (options.commitOpen?.value) {
+        event.preventDefault();
+        options.commitOpen.value = false;
+        return;
+      }
+
+      if (options.diffOpen?.value) {
+        event.preventDefault();
+        options.diffOpen.value = false;
+        return;
+      }
+
+      if (options.focusMode?.value) {
+        event.preventDefault();
+        actions.closeOverlay();
+        return;
+      }
+
       if (options.shortcutsOpen.value) {
         event.preventDefault();
         actions.closeOverlay();
@@ -117,9 +140,21 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions, options: 
       return;
     }
 
+    if (key === "f" && !shift && !alt) {
+      event.preventDefault();
+      actions.openFind?.();
+      return;
+    }
+
     if (key === "\\" && !shift && !alt) {
       event.preventDefault();
       actions.toggleSyntax();
+      return;
+    }
+
+    if (key === "enter" && shift && !alt) {
+      event.preventDefault();
+      actions.toggleFocusMode?.();
       return;
     }
 

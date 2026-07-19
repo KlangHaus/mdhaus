@@ -54,6 +54,17 @@ export interface MessageSchema {
     fontSize: string;
     increaseFontSize: string;
     decreaseFontSize: string;
+    exportPdf: string;
+    exportToc: string;
+    readOnly: string;
+    readOnlyOff: string;
+    focus: string;
+    focusOff: string;
+    showDiff: string;
+    spellcheck: string;
+    spellcheckOff: string;
+    autoBackup: string;
+    autoBackupOff: string;
   };
   files: {
     title: string;
@@ -85,12 +96,64 @@ export interface MessageSchema {
     deleteDirtyBody: string;
     recentFolders: string;
     recentFiles: string;
+    tabs: string;
+    closeTab: string;
+    newFileTitle: string;
+    newFileHint: string;
+    newFileConfirm: string;
+    templates: {
+      blank: { label: string; description: string };
+      note: { label: string; description: string };
+      meeting: { label: string; description: string };
+      blog: { label: string; description: string };
+    };
   };
   git: {
     statusLabel: string;
     branch: string;
     remote: string;
     openOnGitHub: string;
+    showDetails: string;
+    detailsTitle: string;
+    lastAuthor: string;
+    lastAuthorTitle: string;
+    lastAuthorDetail: string;
+    lastAuthorUnknown: string;
+    contributorsTitle: string;
+    contributorsEmpty: string;
+    commits: string;
+    commit: string;
+    commitTitle: string;
+    commitFilesLabel: string;
+    commitNoChanges: string;
+    commitSelectAll: string;
+    commitDeselectAll: string;
+    commitNoFilesSelected: string;
+    commitMessageLabel: string;
+    commitMessagePlaceholder: string;
+    commitMessageHint: string;
+    commitConfirm: string;
+    committing: string;
+    committed: string;
+    commitFailed: string;
+    commitNoRepo: string;
+    push: string;
+    pull: string;
+    pushing: string;
+    pulling: string;
+    pushed: string;
+    pushFailed: string;
+    pulled: string;
+    pullFailed: string;
+    syncNoRepo: string;
+  };
+  tags: {
+    label: string;
+    show: string;
+    hide: string;
+    loading: string;
+    empty: string;
+    clearFilter: string;
   };
   preview: {
     empty: string;
@@ -102,9 +165,28 @@ export interface MessageSchema {
   syntax: {
     label: string;
     title: string;
+    intro: string;
     toggleShow: string;
     toggleHide: string;
     close: string;
+  };
+  backlinks: {
+    label: string;
+    show: string;
+    hide: string;
+    loading: string;
+    empty: string;
+  };
+  diff: {
+    titleDisk: string;
+    titleHead: string;
+    compareMode: string;
+    compareDisk: string;
+    compareHead: string;
+    noChangesDisk: string;
+    noChangesHead: string;
+    loadingHead: string;
+    noHeadVersion: string;
   };
   frontMatter: {
     label: string;
@@ -149,6 +231,8 @@ export interface MessageSchema {
     nextFile: string;
     prevFile: string;
     toggleSyntax: string;
+    toggleFocus: string;
+    find: string;
     showShortcuts: string;
     closePanel: string;
   };
@@ -210,6 +294,12 @@ export interface MessageSchema {
     deleteFailed: string;
     invalidFileName: string;
     fileExists: string;
+    insertedImage: string;
+    imageDropFailed: string;
+    exportPdfHint: string;
+    exportTocEmpty: string;
+    exportedToc: string;
+    exportTocFailed: string;
   };
 }
 

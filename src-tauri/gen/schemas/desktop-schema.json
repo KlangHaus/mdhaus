@@ -357,10 +357,46 @@
           "markdownDescription": "Enables the delete_markdown_path command."
         },
         {
+          "description": "Enables the git_commit_file command.",
+          "type": "string",
+          "const": "allow-git-commit-file",
+          "markdownDescription": "Enables the git_commit_file command."
+        },
+        {
+          "description": "Enables the git_commit_workspace command.",
+          "type": "string",
+          "const": "allow-git-commit-workspace",
+          "markdownDescription": "Enables the git_commit_workspace command."
+        },
+        {
+          "description": "Enables the git_pull_workspace command.",
+          "type": "string",
+          "const": "allow-git-pull-workspace",
+          "markdownDescription": "Enables the git_pull_workspace command."
+        },
+        {
+          "description": "Enables the git_push_workspace command.",
+          "type": "string",
+          "const": "allow-git-push-workspace",
+          "markdownDescription": "Enables the git_push_workspace command."
+        },
+        {
           "description": "Enables the list_markdown_tree command.",
           "type": "string",
           "const": "allow-list-markdown-tree",
           "markdownDescription": "Enables the list_markdown_tree command."
+        },
+        {
+          "description": "Enables the read_file_git_head_content command.",
+          "type": "string",
+          "const": "allow-read-file-git-head-content",
+          "markdownDescription": "Enables the read_file_git_head_content command."
+        },
+        {
+          "description": "Enables the read_file_git_last_author command.",
+          "type": "string",
+          "const": "allow-read-file-git-last-author",
+          "markdownDescription": "Enables the read_file_git_last_author command."
         },
         {
           "description": "Enables the read_markdown_file command.",
@@ -373,6 +409,12 @@
           "type": "string",
           "const": "allow-read-workspace-git-changed-paths",
           "markdownDescription": "Enables the read_workspace_git_changed_paths command."
+        },
+        {
+          "description": "Enables the read_workspace_git_contributors command.",
+          "type": "string",
+          "const": "allow-read-workspace-git-contributors",
+          "markdownDescription": "Enables the read_workspace_git_contributors command."
         },
         {
           "description": "Enables the read_workspace_git_info command.",
@@ -399,10 +441,10 @@
           "markdownDescription": "Enables workspace file watching commands."
         },
         {
-          "description": "Enables the write_markdown_file command.",
+          "description": "Enables the write_markdown_file and write_binary_file commands.",
           "type": "string",
           "const": "allow-write-markdown-file",
-          "markdownDescription": "Enables the write_markdown_file command."
+          "markdownDescription": "Enables the write_markdown_file and write_binary_file commands."
         },
         {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",

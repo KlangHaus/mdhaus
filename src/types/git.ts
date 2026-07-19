@@ -8,3 +8,20 @@ export interface WorkspaceGitInfo {
   githubRepo: string | null;
   githubUrl: string | null;
 }
+
+export interface FileGitAuthor {
+  name: string;
+  email: string;
+  committedRelative: string;
+  committedAt: string;
+}
+
+export interface GitCommitResult {
+  summary: string;
+  files: string[];
+}
+
+export interface GitContributor {
+  name: string;
+  commitCount: number;
+}

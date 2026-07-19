@@ -1,3 +1,4 @@
+mod backup;
 mod git_info;
 mod watcher;
 mod workspace_scan;
@@ -9,7 +10,14 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter, Manager,
 };
-use git_info::{get_workspace_git_changed_paths, get_workspace_git_info, WorkspaceGitInfo};
+use git_info::{
+    get_file_content_at_head, get_file_last_author, get_repository_contributors,
+    get_workspace_git_changed_paths, get_workspace_git_info,
+    git_commit_file as run_git_commit_file, git_commit_workspace as run_git_commit_workspace,
+    git_pull_workspace as run_git_pull_workspace,
+    git_push_workspace as run_git_push_workspace, FileGitAuthor, GitCommitResult, GitContributor,
+    WorkspaceGitInfo,
+};
 use watcher::{notify_file_saved, start_workspace_watch, stop_workspace_watch, WatcherState};
 use workspace_scan::{build_markdown_tree, collect_markdown_file_paths};
 
@@ -35,11 +43,31 @@ fn read_markdown_file(path: String) -> Result<MarkdownDocument, String> {
     Ok(MarkdownDocument { path, content })
 }
 
+/// Write binary file bytes to disk, creating parent directories when needed.
+#[tauri::command]
+fn write_binary_file(path: String, bytes: Vec<u8>) -> Result<String, String> {
+    if Path::new(&path).exists() {
+        return Err(format!("File already exists: {path}"));
+    }
+
+    if let Some(parent) = Path::new(&path).parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    std::fs::write(&path, &bytes).map_err(|error| error.to_string())?;
+
+    Ok(path)
+}
+
 /// Write markdown content to disk, creating parent directories when needed.
 #[tauri::command]
-fn write_markdown_file(path: String, content: String) -> Result<MarkdownDocument, String> {
+fn write_markdown_file(path: String, content: String, backup: bool) -> Result<MarkdownDocument, String> {
     if let Some(parent) = std::path::Path::new(&path).parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    if backup {
+        let _ = backup::backup_markdown_file(&path);
     }
 
     std::fs::write(&path, &content).map_err(|error| error.to_string())?;
@@ -138,6 +166,51 @@ fn read_workspace_git_info(workspace_path: String) -> Result<Option<WorkspaceGit
 #[tauri::command]
 fn read_workspace_git_changed_paths(workspace_path: String) -> Result<Vec<String>, String> {
     get_workspace_git_changed_paths(&workspace_path)
+}
+
+/// Read the most recent git author for a tracked file.
+#[tauri::command]
+fn read_file_git_last_author(file_path: String) -> Result<Option<FileGitAuthor>, String> {
+    get_file_last_author(&file_path)
+}
+
+/// List repository contributors sorted by commit count.
+#[tauri::command]
+fn read_workspace_git_contributors(workspace_path: String) -> Result<Vec<GitContributor>, String> {
+    get_repository_contributors(&workspace_path)
+}
+
+/// Stage all changes under the workspace and commit them.
+#[tauri::command]
+fn git_commit_workspace(
+    workspace_path: String,
+    message: String,
+    files: Vec<String>,
+) -> Result<GitCommitResult, String> {
+    run_git_commit_workspace(&workspace_path, &message, &files)
+}
+
+/// Stage and commit a single file in the workspace repository.
+#[tauri::command]
+fn git_commit_file(file_path: String, message: String) -> Result<String, String> {
+    run_git_commit_file(&file_path, &message)
+}
+
+#[tauri::command]
+fn read_file_git_head_content(file_path: String) -> Result<Option<String>, String> {
+    get_file_content_at_head(&file_path)
+}
+
+/// Push the current branch to its configured remote.
+#[tauri::command]
+fn git_push_workspace(workspace_path: String) -> Result<String, String> {
+    run_git_push_workspace(&workspace_path)
+}
+
+/// Fast-forward pull from the configured remote branch.
+#[tauri::command]
+fn git_pull_workspace(workspace_path: String) -> Result<String, String> {
+    run_git_pull_workspace(&workspace_path)
 }
 
 fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
@@ -266,6 +339,7 @@ pub fn run() {
         .manage(Mutex::new(WatcherState::new()))
         .invoke_handler(tauri::generate_handler![
             read_markdown_file,
+            write_binary_file,
             write_markdown_file,
             rename_markdown_path,
             create_markdown_folder,
@@ -274,6 +348,13 @@ pub fn run() {
             search_markdown_content,
             read_workspace_git_info,
             read_workspace_git_changed_paths,
+            read_file_git_last_author,
+            read_workspace_git_contributors,
+            git_commit_file,
+            git_commit_workspace,
+            read_file_git_head_content,
+            git_push_workspace,
+            git_pull_workspace,
             start_workspace_watch,
             stop_workspace_watch,
             notify_file_saved,

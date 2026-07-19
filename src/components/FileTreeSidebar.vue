@@ -5,7 +5,7 @@ import { GTButton } from "@grundtone/vue";
 import type { FileTreeNode } from "../types/files";
 import type { RecentFileEntry } from "../types/recent";
 import { basename, recentFileSubtitle } from "../types/recent";
-import { filterFileTree, findCachedContentMatches } from "../lib/fileTree";
+import { filterFileTree, filterFileTreeByPaths, findCachedContentMatches } from "../lib/fileTree";
 import { useI18n } from "../i18n/useI18n";
 import FileTreeNodeItem from "./FileTreeNode.vue";
 import FileContextMenu from "./FileContextMenu.vue";
@@ -40,6 +40,7 @@ const props = defineProps<{
   recentFiles: RecentFileEntry[];
   cacheRevision: number;
   getCachedContents: () => Record<string, string>;
+  tagFilterPaths: ReadonlySet<string> | null;
 }>();
 
 const searchQuery = ref("");
@@ -85,11 +86,18 @@ function onContextDelete() {
 let searchGeneration = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-const visibleTree = computed(() =>
-  filterFileTree(props.fileTree, searchQuery.value, contentMatchPaths.value),
-);
+const visibleTree = computed(() => {
+  let tree = props.fileTree;
+  if (props.tagFilterPaths && props.tagFilterPaths.size > 0) {
+    tree = filterFileTreeByPaths(tree, props.tagFilterPaths);
+  }
 
-const showRecentSections = computed(() => searchQuery.value.trim().length < 2);
+  return filterFileTree(tree, searchQuery.value, contentMatchPaths.value);
+});
+
+const showRecentSections = computed(
+  () => searchQuery.value.trim().length < 2 && (!props.tagFilterPaths || props.tagFilterPaths.size === 0),
+);
 const favouriteEntries = computed(() => {
   const result: Array<{ path: string; name: string }> = [];
   const seen = new Set<string>();

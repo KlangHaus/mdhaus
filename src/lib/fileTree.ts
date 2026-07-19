@@ -84,6 +84,32 @@ export function filterFileTree(
   return filtered;
 }
 
+export function filterFileTreeByPaths(
+  nodes: FileTreeNode[],
+  allowedPaths: ReadonlySet<string>,
+): FileTreeNode[] {
+  const filtered: FileTreeNode[] = [];
+
+  for (const node of nodes) {
+    if (node.kind === "file") {
+      if (allowedPaths.has(node.path)) {
+        filtered.push(node);
+      }
+      continue;
+    }
+
+    const children = filterFileTreeByPaths(node.children, allowedPaths);
+    if (children.length > 0) {
+      filtered.push({
+        ...node,
+        children,
+      });
+    }
+  }
+
+  return filtered;
+}
+
 /** Find cached file paths whose in-memory content matches the query. */
 export function findCachedContentMatches(
   cachedContents: Record<string, string>,
@@ -111,14 +137,28 @@ function joinPath(root: string, name: string): string {
 
 /** Pick the first free untitled.md, untitled-1.md, … path under a folder. */
 export function nextUntitledPath(root: string, existingPaths: string[]): string {
-  const existing = new Set(existingPaths);
-  let candidate = joinPath(root, "untitled.md");
-  let counter = 1;
+  return nextAvailablePath(root, existingPaths, "untitled.md");
+}
 
-  while (existing.has(candidate)) {
-    candidate = joinPath(root, `untitled-${counter}.md`);
-    counter += 1;
+/** Pick the first free path for a filename, appending -1, -2, … before the extension when needed. */
+export function nextAvailablePath(root: string, existingPaths: string[], fileName: string): string {
+  const existing = new Set(existingPaths);
+  const initial = joinPath(root, fileName);
+  if (!existing.has(initial)) {
+    return initial;
   }
 
-  return candidate;
+  const dotIndex = fileName.lastIndexOf(".");
+  const base = dotIndex === -1 ? fileName : fileName.slice(0, dotIndex);
+  const extension = dotIndex === -1 ? "" : fileName.slice(dotIndex);
+  let counter = 1;
+
+  while (true) {
+    const candidate = joinPath(root, `${base}-${counter}${extension}`);
+    if (!existing.has(candidate)) {
+      return candidate;
+    }
+
+    counter += 1;
+  }
 }

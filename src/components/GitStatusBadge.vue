@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import type { WorkspaceGitInfo } from "../types/git";
 import { useI18n } from "../i18n/useI18n";
 
 const props = defineProps<{
   info: WorkspaceGitInfo | null;
+}>();
+
+const emit = defineEmits<{
+  "show-details": [];
 }>();
 
 const { t } = useI18n();
@@ -34,32 +37,21 @@ const title = computed(() => {
     t("git.branch", { branch: props.info.branch }),
     t("git.remote", { remote: props.info.remoteUrl }),
     props.info.repositoryRoot,
+    t("git.showDetails"),
   ];
-
-  if (props.info.githubUrl) {
-    lines.push(t("git.openOnGitHub"));
-  }
 
   return lines.join("\n");
 });
-
-async function onClick() {
-  if (!props.info?.githubUrl) {
-    return;
-  }
-
-  await openUrl(props.info.githubUrl);
-}
 </script>
 
 <template>
-  <a
-    v-if="info && info.githubUrl"
-    class="git-status git-status--link"
-    :href="info.githubUrl"
+  <button
+    v-if="info"
+    type="button"
+    class="git-status git-status--button"
     :title="title"
     :aria-label="t('git.statusLabel', { label })"
-    @click.prevent="onClick"
+    @click="emit('show-details')"
   >
     <span class="git-status__branch">{{ info.branch }}</span>
     <span class="git-status__separator">·</span>
@@ -68,21 +60,7 @@ async function onClick() {
       <span class="git-status__separator">·</span>
       <span class="git-status__folder">{{ info.workspaceRelativePath }}</span>
     </template>
-  </a>
-  <span
-    v-else-if="info"
-    class="git-status"
-    :title="title"
-    :aria-label="t('git.statusLabel', { label })"
-  >
-    <span class="git-status__branch">{{ info.branch }}</span>
-    <span class="git-status__separator">·</span>
-    <span class="git-status__repo">{{ info.githubRepo ?? info.remoteName }}</span>
-    <template v-if="info.workspaceRelativePath">
-      <span class="git-status__separator">·</span>
-      <span class="git-status__folder">{{ info.workspaceRelativePath }}</span>
-    </template>
-  </span>
+  </button>
 </template>
 
 <style scoped lang="scss">
@@ -101,8 +79,7 @@ async function onClick() {
   cursor: default;
 }
 
-.git-status--link {
-  text-decoration: none;
+.git-status--button {
   cursor: pointer;
 
   &:hover {

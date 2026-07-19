@@ -5,6 +5,7 @@ import {
   slugifyHeading,
   stripYamlFrontMatter,
 } from "./headings";
+import { renderMathInMarkdown } from "./katexMath";
 import { replaceWikilinks, type WikilinkRenderContext } from "./wikilinks";
 
 const HEADING_SIZES = ["", "3xl", "2xl", "xl", "lg", "base", "sm"];
@@ -83,7 +84,8 @@ renderer.codespan = ({ text }) =>
 
 renderer.code = ({ text, lang }) => {
   const language = lang ? ` data-language="${lang}"` : "";
-  return `<pre class="font-mono text-sm bg-surface border rounded-md p-4 overflow-x-auto mb-4"${language}><code>${text}</code></pre>`;
+  const mermaidClass = lang === "mermaid" ? " mermaid" : "";
+  return `<pre class="font-mono text-sm bg-surface border rounded-md p-4 overflow-x-auto mb-4${mermaidClass}"${language}><code>${text}</code></pre>`;
 };
 
 renderer.blockquote = ({ tokens }) =>
@@ -131,6 +133,7 @@ export async function renderMarkdown(
   const { body } = stripYamlFrontMatter(markdown);
   let preparedBody = injectSectionAnchors(body, outline);
   preparedBody = replaceWikilinks(preparedBody, options);
+  preparedBody = renderMathInMarkdown(preparedBody);
 
   if (yamlTitle) {
     preparedBody = `<div id="${yamlTitle.id}" class="markdown-section-anchor"></div>\n\n${preparedBody}`;

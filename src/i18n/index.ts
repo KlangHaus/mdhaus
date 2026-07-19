@@ -106,7 +106,9 @@ function shortcutGroups(): ShortcutGroup[] {
     {
       title: translate("shortcuts.view"),
       items: [
+        { keys: "⌘F", label: translate("shortcuts.find") },
         { keys: "⌘\\", label: translate("shortcuts.toggleSyntax") },
+        { keys: "⇧↩", label: translate("shortcuts.toggleFocus") },
         { keys: "⌘/", label: translate("shortcuts.showShortcuts") },
         { keys: "Esc", label: translate("shortcuts.closePanel") },
       ],

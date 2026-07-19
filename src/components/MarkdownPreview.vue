@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useTheme } from "@grundtone/vue";
 import { renderMarkdown } from "../lib/markdown";
 import { extractHeadings } from "../lib/headings";
+import { renderMermaidBlocks, resetMermaidTheme } from "../lib/mermaidRender";
 import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
 import { TOC_SIDEBAR_OPEN_KEY, loadSidebarOpen, saveSidebarOpen } from "../types/sidebar";
 import { useI18n } from "../i18n/useI18n";
@@ -19,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { mode: themeMode } = useTheme();
 
 const html = ref("");
 const loading = ref(false);
@@ -58,29 +61,56 @@ defineExpose({
   scrollToHeading,
 });
 
-onMounted(() => {
-  previewRef.value?.addEventListener("scroll", onPreviewScroll, { passive: true });
-});
-
 onBeforeUnmount(() => {
   previewRef.value?.removeEventListener("scroll", onPreviewScroll);
+  colorSchemeMedia?.removeEventListener("change", onVisualThemeChange);
 });
+
+let colorSchemeMedia: MediaQueryList | null = null;
+
+async function refreshPreview() {
+  loading.value = true;
+  try {
+    html.value = await renderMarkdown(props.source, {
+      workspaceFiles: props.workspaceFiles,
+      currentFilePath: props.currentFilePath,
+    });
+  } finally {
+    loading.value = false;
+  }
+
+  await nextTick();
+  resetMermaidTheme();
+  if (articleRef.value) {
+    await renderMermaidBlocks(articleRef.value);
+  }
+}
+
+function onVisualThemeChange() {
+  if (props.source.trim().length === 0) {
+    return;
+  }
+
+  void refreshPreview();
+}
 
 watch(
   () => [props.source, props.workspaceFiles, props.currentFilePath] as const,
-  async ([source]) => {
-    loading.value = true;
-    try {
-      html.value = await renderMarkdown(source, {
-        workspaceFiles: props.workspaceFiles,
-        currentFilePath: props.currentFilePath,
-      });
-    } finally {
-      loading.value = false;
-    }
+  () => {
+    void refreshPreview();
   },
   { immediate: true },
 );
+
+watch(themeMode, () => {
+  void refreshPreview();
+});
+
+onMounted(() => {
+  previewRef.value?.addEventListener("scroll", onPreviewScroll, { passive: true });
+  colorSchemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+  colorSchemeMedia.addEventListener("change", onVisualThemeChange);
+});
 
 function scrollToHeading(id: string) {
   nextTick(() => {

@@ -9,14 +9,49 @@ description = "Enables the read_workspace_git_changed_paths command."
 commands.allow = ["read_workspace_git_changed_paths"]
 
 [[permission]]
+identifier = "allow-read-file-git-last-author"
+description = "Enables the read_file_git_last_author command."
+commands.allow = ["read_file_git_last_author"]
+
+[[permission]]
+identifier = "allow-read-workspace-git-contributors"
+description = "Enables the read_workspace_git_contributors command."
+commands.allow = ["read_workspace_git_contributors"]
+
+[[permission]]
+identifier = "allow-read-file-git-head-content"
+description = "Enables the read_file_git_head_content command."
+commands.allow = ["read_file_git_head_content"]
+
+[[permission]]
+identifier = "allow-git-pull-workspace"
+description = "Enables the git_pull_workspace command."
+commands.allow = ["git_pull_workspace"]
+
+[[permission]]
+identifier = "allow-git-push-workspace"
+description = "Enables the git_push_workspace command."
+commands.allow = ["git_push_workspace"]
+
+[[permission]]
+identifier = "allow-git-commit-workspace"
+description = "Enables the git_commit_workspace command."
+commands.allow = ["git_commit_workspace"]
+
+[[permission]]
+identifier = "allow-git-commit-file"
+description = "Enables the git_commit_file command."
+commands.allow = ["git_commit_file"]
+
+[[permission]]
 identifier = "allow-read-markdown-file"
 description = "Enables the read_markdown_file command."
 commands.allow = ["read_markdown_file"]
 
 [[permission]]
 identifier = "allow-write-markdown-file"
-description = "Enables the write_markdown_file command."
-commands.allow = ["write_markdown_file"]
+description = "Enables the write_markdown_file and write_binary_file commands."
+commands.allow = ["write_markdown_file", "write_binary_file"]
 
 [[permission]]
 identifier = "allow-list-markdown-tree"

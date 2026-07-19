@@ -5,6 +5,7 @@ import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
+import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { useEditorFontSize } from "../composables/useEditorFontSize";
 import { createEditorTheme } from "../lib/editorTheme";
 import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
@@ -12,15 +13,23 @@ import { getScrollRatio, setScrollRatio } from "../lib/scrollSync";
 const { fontSize } = useEditorFontSize();
 const themeCompartment = new Compartment();
 const editabilityCompartment = new Compartment();
+const spellcheckCompartment = new Compartment();
 
-const props = defineProps<{
-  modelValue: string;
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    readonly?: boolean;
+    spellcheck?: boolean;
+  }>(),
+  {
+    spellcheck: true,
+  },
+);
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
   scroll: [ratio: number];
+  "image-drop": [file: File];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -46,8 +55,51 @@ function onScrollerScroll() {
   emit("scroll", getScrollRatio(view.scrollDOM));
 }
 
+function insertTextAtCursor(text: string) {
+  if (!view || props.readonly) {
+    return;
+  }
+
+  const selection = view.state.selection.main;
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert: text },
+    selection: { anchor: selection.from + text.length },
+  });
+  view.focus();
+}
+
+function onDragOver(event: DragEvent) {
+  if (props.readonly) {
+    return;
+  }
+
+  event.preventDefault();
+}
+
+function onDrop(event: DragEvent) {
+  if (props.readonly) {
+    return;
+  }
+
+  event.preventDefault();
+  const file = event.dataTransfer?.files?.[0];
+  if (!file || !file.type.startsWith("image/")) {
+    return;
+  }
+
+  emit("image-drop", file);
+}
+
 defineExpose({
   setScrollRatio: applyScrollRatio,
+  insertTextAtCursor,
+  openSearch() {
+    if (!view || props.readonly) {
+      return;
+    }
+
+    openSearchPanel(view);
+  },
   scrollToLine(lineNumber: number) {
     if (!view) {
       return;
@@ -79,12 +131,18 @@ onMounted(() => {
         lineNumbers(),
         history(),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        search({ top: true }),
+        keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         editabilityCompartment.of([
           EditorState.readOnly.of(!!props.readonly),
           EditorView.editable.of(!props.readonly),
         ]),
+        spellcheckCompartment.of(
+          EditorView.contentAttributes.of({
+            spellcheck: props.spellcheck ? "true" : "false",
+          }),
+        ),
         themeCompartment.of(createEditorTheme(fontSize.value)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -142,6 +200,23 @@ watch(
   },
 );
 
+watch(
+  () => props.spellcheck,
+  (enabled) => {
+    if (!view) {
+      return;
+    }
+
+    view.dispatch({
+      effects: spellcheckCompartment.reconfigure(
+        EditorView.contentAttributes.of({
+          spellcheck: enabled ? "true" : "false",
+        }),
+      ),
+    });
+  },
+);
+
 onBeforeUnmount(() => {
   scrollCleanup?.();
   scrollCleanup = undefined;
@@ -151,7 +226,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="host" class="markdown-editor" />
+  <div
+    ref="host"
+    class="markdown-editor"
+    @dragover="onDragOver"
+    @drop="onDrop"
+  />
 </template>
 
 <style scoped lang="scss">

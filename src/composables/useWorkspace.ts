@@ -10,8 +10,10 @@ import type {
   WorkspaceTreeChanged,
 } from "../types/workspace";
 import type { RecentFileEntry } from "../types/recent";
-import type { WorkspaceGitInfo } from "../types/git";
-import { flattenMarkdownFiles, flattenDirectoryPaths, nextUntitledFolderPath, nextUntitledPath } from "../lib/fileTree";
+import type { WorkspaceGitInfo, FileGitAuthor, GitContributor, GitCommitResult } from "../types/git";
+import { loadPreferences } from "../types/preferences";
+import { flattenMarkdownFiles, flattenDirectoryPaths, nextAvailablePath, nextUntitledFolderPath } from "../lib/fileTree";
+import { getTemplateBaseName, getTemplateContent, type FileTemplateId } from "../lib/fileTemplates";
 import {
   forgetRecentFile,
   forgetRecentFolder,
@@ -34,6 +36,8 @@ import {
 } from "../lib/exportHtmlDocument";
 import { PrintDocumentError, printMarkdownDocument } from "../lib/printDocument";
 import { extractHeadings } from "../lib/headings";
+import { findBacklinksForFile, type BacklinkEntry } from "../lib/backlinks";
+import { listWorkspaceTags, type TagEntry } from "../lib/tags";
 import { APP_NAME } from "../lib/brand";
 
 const MARKDOWN_EXTENSIONS = ["md", "markdown", "mdx", "txt"];
@@ -113,7 +117,87 @@ export function useWorkspace() {
   const recentFiles = ref(getRecentFiles());
   const workspaceGitInfo = ref<WorkspaceGitInfo | null>(null);
   const workspaceGitChangedPaths = ref<Record<string, boolean>>({});
+  const fileGitAuthor = ref<FileGitAuthor | null>(null);
+  const gitContributors = ref<GitContributor[]>([]);
+  const gitSyncing = ref<"push" | "pull" | null>(null);
+  const workspaceTags = ref<TagEntry[]>([]);
+  const tagsLoading = ref(false);
   const favouriteFiles = ref<string[]>(loadFavouriteFiles());
+  const openTabs = ref<string[]>([]);
+  const diskContentByPath = ref<Record<string, string>>({});
+  const backlinks = ref<BacklinkEntry[]>([]);
+  const backlinksLoading = ref(false);
+
+  function addToOpenTabs(path: string) {
+    if (!openTabs.value.includes(path)) {
+      openTabs.value = [...openTabs.value, path];
+    }
+  }
+
+  function removeFromOpenTabs(path: string) {
+    openTabs.value = openTabs.value.filter((candidate) => candidate !== path);
+  }
+
+  async function loadDiskContent(path: string): Promise<string> {
+    try {
+      const doc = await invoke<MarkdownDocument>("read_markdown_file", { path });
+      diskContentByPath.value = { ...diskContentByPath.value, [path]: doc.content };
+      return doc.content;
+    } catch {
+      return diskContentByPath.value[path] ?? "";
+    }
+  }
+
+  async function refreshBacklinks() {
+    if (!filePath.value) {
+      backlinks.value = [];
+      return;
+    }
+
+    backlinksLoading.value = true;
+    try {
+      const sources: Record<string, string> = {};
+      for (const path of workspaceFiles.value) {
+        if (contentCache.has(path)) {
+          sources[path] = contentCache.get(path) ?? "";
+          continue;
+        }
+
+        try {
+          const doc = await invoke<MarkdownDocument>("read_markdown_file", { path });
+          sources[path] = doc.content;
+        } catch {
+          // Skip unreadable files.
+        }
+      }
+
+      backlinks.value = findBacklinksForFile(filePath.value, sources, workspaceFiles.value);
+    } finally {
+      backlinksLoading.value = false;
+    }
+  }
+
+  function closeTab(path: string) {
+    if (!openTabs.value.includes(path)) {
+      return;
+    }
+
+    const index = openTabs.value.indexOf(path);
+    removeFromOpenTabs(path);
+
+    if (filePath.value !== path) {
+      return;
+    }
+
+    const fallback = openTabs.value[Math.min(index, openTabs.value.length - 1)];
+    if (fallback) {
+      void openFileFromTree(fallback);
+      return;
+    }
+
+    rememberCurrentFile();
+    resetWelcome();
+  }
 
   function touchRecentFolder(path: string) {
     recentFolders.value = recordRecentFolder(path);
@@ -219,6 +303,7 @@ export function useWorkspace() {
 
   function applyDiskContent(path: string, diskContent: string) {
     contentCache.set(path, diskContent);
+    diskContentByPath.value = { ...diskContentByPath.value, [path]: diskContent };
     bumpCacheRevision();
 
     if (filePath.value === path) {
@@ -267,8 +352,78 @@ export function useWorkspace() {
     }
   }
 
+  async function refreshFileGitAuthor() {
+    if (!filePath.value || !workspaceGitInfo.value) {
+      fileGitAuthor.value = null;
+      return;
+    }
+
+    try {
+      fileGitAuthor.value = await invoke<FileGitAuthor | null>("read_file_git_last_author", {
+        filePath: filePath.value,
+      });
+    } catch {
+      fileGitAuthor.value = null;
+    }
+  }
+
+  async function refreshGitContributors() {
+    if (!workspaceRoot.value || !workspaceGitInfo.value) {
+      gitContributors.value = [];
+      return;
+    }
+
+    try {
+      gitContributors.value = await invoke<GitContributor[]>("read_workspace_git_contributors", {
+        workspacePath: workspaceRoot.value,
+      });
+    } catch {
+      gitContributors.value = [];
+    }
+  }
+
   async function refreshWorkspaceGitState() {
-    await Promise.all([refreshWorkspaceGitInfo(), refreshWorkspaceGitChangedPaths()]);
+    await refreshWorkspaceGitInfo();
+    if (!workspaceGitInfo.value) {
+      workspaceGitChangedPaths.value = {};
+      gitContributors.value = [];
+      fileGitAuthor.value = null;
+      return;
+    }
+
+    await Promise.all([
+      refreshWorkspaceGitChangedPaths(),
+      refreshGitContributors(),
+      refreshFileGitAuthor(),
+    ]);
+  }
+
+  async function refreshWorkspaceTags() {
+    if (!workspaceRoot.value) {
+      workspaceTags.value = [];
+      return;
+    }
+
+    tagsLoading.value = true;
+    try {
+      const sources: Record<string, string> = { ...getCachedContents() };
+      for (const path of workspaceFiles.value) {
+        if (sources[path]) {
+          continue;
+        }
+
+        try {
+          const doc = await invoke<MarkdownDocument>("read_markdown_file", { path });
+          sources[path] = doc.content;
+        } catch {
+          // Skip unreadable files.
+        }
+      }
+
+      workspaceTags.value = listWorkspaceTags(sources);
+    } finally {
+      tagsLoading.value = false;
+    }
   }
 
   async function refreshWorkspaceTree() {
@@ -280,6 +435,7 @@ export function useWorkspace() {
       const tree = await invoke<FileTreeNode[]>("list_markdown_tree", { root: workspaceRoot.value });
       fileTree.value = tree;
       await refreshWorkspaceGitState();
+      void refreshWorkspaceTags();
     } catch (error) {
       status.value = t("status.treeRefreshFailed", { error: String(error) });
     }
@@ -294,6 +450,7 @@ export function useWorkspace() {
       await startWorkspaceWatch(root);
       touchRecentFolder(root);
       await refreshWorkspaceGitState();
+      void refreshWorkspaceTags();
       status.value = t("status.openedFolder", { name: basename(root) });
     } catch (error) {
       status.value = t("status.folderScanFailed", { error: String(error) });
@@ -332,10 +489,12 @@ export function useWorkspace() {
     try {
       const doc = await invoke<MarkdownDocument>("read_markdown_file", { path: selected });
       contentCache.set(doc.path, doc.content);
+      diskContentByPath.value = { ...diskContentByPath.value, [doc.path]: doc.content };
       bumpCacheRevision();
       filePath.value = doc.path;
       content.value = doc.content;
       dirty.value = false;
+      addToOpenTabs(doc.path);
       touchRecentFile(doc.path);
       status.value = t("status.openedFile", { name: basename(doc.path) });
     } catch (error) {
@@ -382,7 +541,10 @@ export function useWorkspace() {
         content.value = contentCache.get(path) ?? "";
         filePath.value = path;
         dirty.value = isDirtyPath(path);
+        addToOpenTabs(path);
         touchRecentFile(path);
+        void loadDiskContent(path);
+        void refreshBacklinks();
         status.value = t("status.openedFile", { name: basename(path) });
         return true;
       }
@@ -390,11 +552,14 @@ export function useWorkspace() {
       status.value = t("status.opening");
       const doc = await invoke<MarkdownDocument>("read_markdown_file", { path });
       contentCache.set(path, doc.content);
+      diskContentByPath.value = { ...diskContentByPath.value, [path]: doc.content };
       bumpCacheRevision();
       content.value = doc.content;
       filePath.value = path;
       dirty.value = false;
+      addToOpenTabs(path);
       touchRecentFile(doc.path);
+      void refreshBacklinks();
       status.value = t("status.openedFile", { name: basename(doc.path) });
       return true;
     } catch (error) {
@@ -454,7 +619,7 @@ export function useWorkspace() {
     return basename(path);
   }
 
-  async function createNewFile() {
+  async function createNewFile(templateId: FileTemplateId = "blank") {
     if (!workspaceRoot.value) {
       status.value = t("status.chooseFolderFirst");
       return;
@@ -462,14 +627,16 @@ export function useWorkspace() {
 
     rememberCurrentFile();
 
-    const path = nextUntitledPath(workspaceRoot.value, workspaceFiles.value);
-    const initialContent = "# Untitled\n\n";
+    const baseName = getTemplateBaseName(templateId);
+    const path = nextAvailablePath(workspaceRoot.value, workspaceFiles.value, baseName);
+    const initialContent = getTemplateContent(templateId, locale.value ?? "en");
 
     status.value = t("status.creatingFile");
     try {
       const saved = await invoke<MarkdownDocument>("write_markdown_file", {
         path,
         content: initialContent,
+        backup: false,
       });
       await invoke("notify_file_saved", { path: saved.path });
       await refreshWorkspaceTree();
@@ -478,6 +645,8 @@ export function useWorkspace() {
       filePath.value = saved.path;
       content.value = saved.content;
       dirty.value = false;
+      diskContentByPath.value = { ...diskContentByPath.value, [saved.path]: saved.content };
+      addToOpenTabs(saved.path);
       touchRecentFile(saved.path);
       status.value = t("status.createdFile", { name: basename(saved.path) });
     } catch (error) {
@@ -538,12 +707,15 @@ export function useWorkspace() {
       const saved = await invoke<MarkdownDocument>("write_markdown_file", {
         path: target,
         content: content.value,
+        backup: loadPreferences().autoBackup,
       });
       filePath.value = saved.path;
       contentCache.set(saved.path, saved.content);
+      diskContentByPath.value = { ...diskContentByPath.value, [saved.path]: saved.content };
       bumpCacheRevision();
       clearDirty(saved.path);
       dirty.value = false;
+      addToOpenTabs(saved.path);
       touchRecentFile(saved.path);
       await invoke("notify_file_saved", { path: saved.path });
       status.value = t("status.savedFile", { name: basename(saved.path) });
@@ -684,6 +856,7 @@ export function useWorkspace() {
       clearDirty(path);
       recentFiles.value = forgetRecentFile(path);
       favouriteFiles.value = removeFavouriteFile(path);
+      removeFromOpenTabs(path);
 
       if (filePath.value === path) {
         const remaining = workspaceFiles.value.filter((candidate) => candidate !== path);
@@ -733,6 +906,7 @@ export function useWorkspace() {
       const saved = await invoke<MarkdownDocument>("write_markdown_file", {
         path: selected,
         content: html,
+        backup: false,
       });
       status.value = t("status.exportedHtml", { name: basename(saved.path) });
     } catch (error) {
@@ -782,7 +956,7 @@ export function useWorkspace() {
     status.value = t("status.printing");
     try {
       await printCurrentDocument();
-      status.value = "PDF: brug printdialogens 'Gem som PDF'.";
+      status.value = t("status.exportPdfHint");
     } catch (error) {
       status.value = t("status.printFailed", { error: String(error) });
     }
@@ -791,7 +965,7 @@ export function useWorkspace() {
   async function exportDocumentToc() {
     const toc = buildMarkdownToc(content.value);
     if (toc.length === 0) {
-      status.value = "Ingen overskrifter at eksportere.";
+      status.value = t("status.exportTocEmpty");
       return;
     }
 
@@ -811,10 +985,143 @@ export function useWorkspace() {
       await invoke<MarkdownDocument>("write_markdown_file", {
         path: selected,
         content: `${toc}\n`,
+        backup: false,
       });
-      status.value = `Eksporterede TOC til ${basename(selected)}.`;
+      status.value = t("status.exportedToc", { name: basename(selected) });
     } catch (error) {
-      status.value = `TOC-eksport mislykkedes: ${String(error)}`;
+      status.value = t("status.exportTocFailed", { error: String(error) });
+    }
+  }
+
+  async function pushWorkspace(): Promise<boolean> {
+    if (!workspaceRoot.value || !workspaceGitInfo.value) {
+      status.value = t("git.syncNoRepo");
+      return false;
+    }
+
+    gitSyncing.value = "push";
+    status.value = t("git.pushing");
+    try {
+      const summary = await invoke<string>("git_push_workspace", {
+        workspacePath: workspaceRoot.value,
+      });
+      await refreshWorkspaceGitState();
+      status.value = t("git.pushed", { summary });
+      return true;
+    } catch (error) {
+      status.value = t("git.pushFailed", { error: String(error) });
+      return false;
+    } finally {
+      gitSyncing.value = null;
+    }
+  }
+
+  async function pullWorkspace(): Promise<boolean> {
+    if (!workspaceRoot.value || !workspaceGitInfo.value) {
+      status.value = t("git.syncNoRepo");
+      return false;
+    }
+
+    gitSyncing.value = "pull";
+    status.value = t("git.pulling");
+    try {
+      const summary = await invoke<string>("git_pull_workspace", {
+        workspacePath: workspaceRoot.value,
+      });
+      await refreshWorkspaceTree();
+      await refreshWorkspaceGitState();
+      if (filePath.value && !dirty.value) {
+        const doc = await invoke<MarkdownDocument>("read_markdown_file", { path: filePath.value });
+        applyDiskContent(filePath.value, doc.content);
+      }
+      status.value = t("git.pulled", { summary });
+      return true;
+    } catch (error) {
+      status.value = t("git.pullFailed", { error: String(error) });
+      return false;
+    } finally {
+      gitSyncing.value = null;
+    }
+  }
+
+  function workspaceAbsolutePath(relativePath: string): string | null {
+    if (!workspaceRoot.value) {
+      return null;
+    }
+
+    if (relativePath === ".") {
+      return workspaceRoot.value;
+    }
+
+    const prefix = workspaceRoot.value.endsWith("/")
+      ? workspaceRoot.value
+      : `${workspaceRoot.value}/`;
+    return `${prefix}${relativePath}`;
+  }
+
+  async function saveDirtyFilesForCommit(selectedRelativePaths: string[]) {
+    if (!workspaceRoot.value) {
+      return;
+    }
+
+    const selectedAbsolute = new Set(
+      selectedRelativePaths
+        .map((relativePath) => workspaceAbsolutePath(relativePath))
+        .filter((path): path is string => path !== null),
+    );
+
+    for (const path of Object.keys(dirtyPathMap.value)) {
+      if (!selectedAbsolute.has(path)) {
+        continue;
+      }
+
+      const fileContent = path === filePath.value ? content.value : (contentCache.get(path) ?? "");
+      const saved = await invoke<MarkdownDocument>("write_markdown_file", {
+        path,
+        content: fileContent,
+        backup: loadPreferences().autoBackup,
+      });
+      await invoke("notify_file_saved", { path: saved.path });
+      contentCache.set(saved.path, saved.content);
+      diskContentByPath.value = { ...diskContentByPath.value, [saved.path]: saved.content };
+      clearDirty(saved.path);
+    }
+
+    if (filePath.value && !dirtyPathMap.value[filePath.value]) {
+      dirty.value = false;
+    }
+
+    bumpCacheRevision();
+    await refreshWorkspaceGitChangedPaths();
+  }
+
+  async function commitWorkspace(message: string, files: string[]): Promise<boolean> {
+    if (!workspaceRoot.value || !workspaceGitInfo.value) {
+      status.value = t("git.commitNoRepo");
+      return false;
+    }
+
+    if (files.length === 0) {
+      status.value = t("git.commitNoFilesSelected");
+      return false;
+    }
+
+    await saveDirtyFilesForCommit(files);
+    await refreshWorkspaceGitChangedPaths();
+
+    status.value = t("git.committing");
+    try {
+      const result = await invoke<GitCommitResult>("git_commit_workspace", {
+        workspacePath: workspaceRoot.value,
+        message,
+        files,
+      });
+      await refreshWorkspaceGitState();
+      status.value = t("git.committed", { summary: result.summary });
+      return true;
+    } catch (error) {
+      status.value = t("git.commitFailed", { error: String(error) });
+      return false;
     }
   }
 
@@ -823,6 +1130,11 @@ export function useWorkspace() {
   function toggleFavourite(path: string) {
     favouriteFiles.value = toggleFavouriteFile(path);
   }
+
+  watch(filePath, () => {
+    void refreshBacklinks();
+    void refreshFileGitAuthor();
+  });
 
   onMounted(async () => {
     unlisteners = await Promise.all([
@@ -883,6 +1195,11 @@ export function useWorkspace() {
     recentFiles,
     recentFolders,
     reloadExternalChanges,
+    commitWorkspace,
+    refreshWorkspaceGitChangedPaths,
+    pushWorkspace,
+    pullWorkspace,
+    gitSyncing,
     renameFile,
     saveFile,
     setContent,
@@ -891,6 +1208,16 @@ export function useWorkspace() {
     workspaceFiles,
     workspaceGitChangedPaths,
     workspaceGitInfo,
+    fileGitAuthor,
+    gitContributors,
+    workspaceTags,
+    tagsLoading,
+    backlinks,
+    backlinksLoading,
+    closeTab,
+    diskContentByPath,
+    openTabs,
+    refreshBacklinks,
     favouriteFiles,
     toggleFavourite,
     workspaceLabel,

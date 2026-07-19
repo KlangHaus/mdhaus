@@ -1,0 +1,12 @@
+packages:
+  - .
+
+# pnpm 10
+onlyBuiltDependencies:
+  - "@parcel/watcher"
+  - esbuild
+
+# pnpm 11+
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true

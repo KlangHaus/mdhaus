@@ -17,6 +17,7 @@ Open-source macOS markdown editor with a split-pane live preview. Built with **T
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+
+- [pnpm](https://pnpm.io/) 10+ (`corepack enable` or `brew install pnpm`)
 - [Rust](https://www.rust-lang.org/) (install via Homebrew: `brew install rust`)
 - macOS (primary target)
 
@@ -24,17 +25,42 @@ Open-source macOS markdown editor with a split-pane live preview. Built with **T
 
 ```bash
 cd mdhaus
-npm install
-npm run tauri:dev
+pnpm install
+pnpm tauri:dev
+```
+
+Web-only (no Tauri shell):
+
+```bash
+pnpm dev
 ```
 
 ## Build
 
 ```bash
-npm run tauri:build
+pnpm tauri:build
 ```
 
 The packaged app is written to `src-tauri/target/release/bundle/` as **open mdHaus.app**.
+
+## Install (Homebrew)
+
+```bash
+brew tap klanghaus/tap
+brew install --cask open-mdhaus
+```
+
+Requires a [GitHub release](https://github.com/KlangHaus/mdhaus/releases) (tag `v*`, built by CI).
+
+### First release (maintainers)
+
+1. Ensure **Settings → Actions → General → Workflow permissions** is set to **Read and write**.
+2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`
+3. Wait for the [Release workflow](.github/workflows/release.yml) to finish.
+4. Update the cask checksums: `./scripts/update-cask-sha.sh v0.1.0`
+5. Push `homebrew-tap/` to [KlangHaus/homebrew-tap](https://github.com/KlangHaus/homebrew-tap).
+
+Optional: add Apple code-signing secrets (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`) for notarized builds without Gatekeeper warnings.
 
 ## Project structure
 

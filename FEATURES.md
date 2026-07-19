@@ -11,8 +11,8 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] GFM tables in preview
 - [x] Scroll-sync between editor and preview
 - [x] Click heading in preview to jump to editor line
-- [ ] Distraction-free fullscreen writing mode
-- [ ] Image drag-and-drop into markdown
+- [x] Distraction-free fullscreen writing mode
+- [x] Image drag-and-drop into markdown
 
 ## Files and workspace
 
@@ -22,6 +22,7 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Unsaved indicator per file in tree
 - [x] In-memory cache when switching files
 - [x] Create new file (`untitled.md`) in workspace
+- [x] New file templates (blank, note, meeting, blog)
 - [x] Filter/search files in sidebar (name + content)
 - [x] Create new folder from UI
 - [x] Rename file from UI
@@ -43,7 +44,7 @@ Track planned and completed features. Mark done items with `[x]`.
 ## Navigation and shortcuts
 
 - [x] Native macOS menus (File, Edit, Navigate, View, Help)
-- [x] Keyboard shortcuts (open, save, next/prev file, syntax, shortcuts)
+- [x] Keyboard shortcuts (open, save, next/prev file, syntax, find, shortcuts)
 - [x] Shortcuts reference modal
 - [x] Next/previous file in folder (`⌥⌘↑` / `⌥⌘↓`)
 - [x] Auto-scroll active file in tree
@@ -57,7 +58,8 @@ Track planned and completed features. Mark done items with `[x]`.
 - [x] Focus mode (editor only)
 - [x] Pane layout switcher (split / editor / preview)
 - [x] Read-only preview mode
-- [ ] Mermaid / diagram support
+- [x] Mermaid / diagram support
+- [x] KaTeX math rendering in preview
 - [x] YAML front matter editor (title, tags, date)
 - [x] Auto-generated document TOC export
 
@@ -86,8 +88,12 @@ Track planned and completed features. Mark done items with `[x]`.
 ## Git integration
 
 - [x] Git changed-file indicator in tree
-- [ ] Simple diff view (disk vs last saved)
+- [x] Simple diff view (disk vs last saved)
+- [x] Git diff vs HEAD in diff modal
 - [x] Branch name in status bar (optional)
+- [x] Last author and contributors (read-only git log)
+- [x] Commit current file to git
+- [x] Git push and pull from UI
 
 ## Platform and distribution
 
@@ -108,12 +114,15 @@ Track planned and completed features. Mark done items with `[x]`.
 - [ ] Unit tests for markdown renderer
 - [ ] E2E smoke test (open folder, edit, save)
 - [ ] Crash reporting (optional, opt-in)
-- [ ] Optional auto-backup to `.open-mdhaus-backup/`
+- [x] Optional auto-backup to `.open-mdhaus-backup/`
 
 ## Nice-to-have / later
 
 - [ ] Split editor (two files side by side)
-- [ ] Tabs for open files
-- [ ] Spell check (system or Hunspell)
-- [ ] Linked mentions / backlinks panel
+- [x] Tabs for open files
+- [x] Spell check (system or Hunspell)
+- [x] Find and replace in editor (⌘F)
+- [x] Persist spellcheck preference
+- [x] Linked mentions / backlinks panel
+- [x] Tag panel with file filtering
 - [ ] Plugin system for custom renderers

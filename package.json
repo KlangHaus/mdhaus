@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@10.14.0",
   "description": "open mdHaus — open-source Markdown editor with live split-pane preview for macOS",
   "license": "MIT",
   "scripts": {
@@ -17,6 +18,7 @@
     "@codemirror/commands": "^6.8.1",
     "@codemirror/lang-markdown": "^6.3.2",
     "@codemirror/language-data": "^6.5.1",
+    "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.36.5",
     "@grundtone/icons": "^2.15.0",
@@ -24,7 +26,9 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "katex": "^0.17.0",
     "marked": "^15.0.12",
+    "mermaid": "^11.16.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

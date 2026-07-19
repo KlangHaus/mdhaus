@@ -67,9 +67,8 @@ function onToggleFavourite(event: MouseEvent) {
       <span class="file-tree-node__name">{{ node.name }}</span>
     </button>
 
-    <button
+    <div
       v-else
-      type="button"
       class="file-tree-node__row file-tree-node__row--file"
       :data-file-path="node.path"
       :class="{
@@ -77,10 +76,11 @@ function onToggleFavourite(event: MouseEvent) {
         'file-tree-node__row--loading': loadingPath === node.path,
       }"
       :style="{ paddingLeft: `${depth * 12 + 20}px` }"
-      @click="selectFile"
       @contextmenu="onFileContextMenu"
     >
-      <span class="file-tree-node__name">{{ node.name }}</span>
+      <button type="button" class="file-tree-node__select" @click="selectFile">
+        <span class="file-tree-node__name">{{ node.name }}</span>
+      </button>
       <button
         type="button"
         class="file-tree-node__favourite"
@@ -92,7 +92,7 @@ function onToggleFavourite(event: MouseEvent) {
       </button>
       <span v-if="changedPaths[node.path]" class="file-tree-node__changed" aria-label="git changed">●</span>
       <span v-if="dirtyPaths[node.path]" class="file-tree-node__dirty" :aria-label="t('files.unsaved')">•</span>
-    </button>
+    </div>
 
     <ul v-if="node.kind === 'dir' && expanded && node.children.length > 0" class="file-tree-node__children">
       <FileTreeNodeItem
@@ -180,6 +180,21 @@ function onToggleFavourite(event: MouseEvent) {
   white-space: nowrap;
 }
 
+.file-tree-node__select {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
 .file-tree-node__dirty {
   color: var(--color-primary, #5b4cdb);
   font-weight: 700;
@@ -191,7 +206,7 @@ function onToggleFavourite(event: MouseEvent) {
 }
 
 .file-tree-node__favourite {
-  margin-left: auto;
+  flex: 0 0 auto;
   border: none;
   background: transparent;
   color: #c5c5d5;

@@ -25,3 +25,8 @@ dist-ssr
 
 # Tauri
 src-tauri/target
+src-tauri/icons/android
+src-tauri/icons/ios
+
+# Homebrew tap is published as KlangHaus/homebrew-tap
+homebrew-tap/
