@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import type { ThemeMode } from "@grundtone/core";
 import {
   GTOverflowMenu,
   useTheme,
   type OverflowMenuItem,
-  type ThemeMode,
 } from "@grundtone/vue";
 import { useI18n } from "../i18n/useI18n";
 
